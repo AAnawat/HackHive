@@ -1,0 +1,42 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    container_name: hackhive-frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dockerfile
+    container_name: hackhive-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - /app/node_modules
+      - ./backend:/app
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on: 
+      - database
+  database:
+    image: postgres
+    container_name: hackhive-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - hackhive-ps:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=123456789
+      - POSTGRES_DB=hackhive
+
+volumes:
+  hackhive-ps:
+    
