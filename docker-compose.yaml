@@ -11,6 +11,8 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+    networks:
+      - hackhive-network
   backend:
     build:
       context: ./backend
@@ -25,6 +27,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
     depends_on: 
       - database
+    networks:
+      - hackhive-network
   database:
     image: postgres
     container_name: hackhive-postgres
@@ -36,7 +40,11 @@ services:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=123456789
       - POSTGRES_DB=hackhive
+    networks:
+      - hackhive-network
+
+networks:
+  hackhive-network:
 
 volumes:
   hackhive-ps:
-    
