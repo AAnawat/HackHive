@@ -1,10 +1,69 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { createBrowserRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import { MantineProvider, createTheme, type MantineColorsTuple } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 
+import './index.css'
+import '@mantine/core/styles.css'
+import '@mantine/notifications/styles.css'
+
+import HomePage from './pages/homePage';
+
+
+// React router system
+const router = createBrowserRouter([
+  {
+    path: "/",
+    Component: HomePage
+  }
+]);
+
+
+// Mantine Theme system
+const yellowTheme: MantineColorsTuple = [
+  '#fdfce4',
+  '#f8f6d3',
+  '#f0ecaa',
+  '#e7e17c',
+  '#e0d856',
+  '#dbd33e',
+  '#d9d02f',
+  '#c0b820',
+  '#aaa317',
+  '#928d03'
+];
+
+const blackTheme: MantineColorsTuple = [
+  '#f5f5f5',
+  '#e0e0e0',
+  '#bdbdbd',
+  '#9e9e9e',
+  '#757575',
+  '#424242',
+  '#303030',
+  '#212121',
+  '#1b1b1b',
+  '#000000',
+];
+
+const theme = createTheme({
+  colors: {
+    yellowTheme,
+    blackTheme
+  },
+  primaryColor: 'yellowTheme',
+  fontFamily: "Playpen Sans Thai, cursive"
+});
+
+
+// Main app
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <MantineProvider theme={theme}>
+      <Notifications />
+      <RouterProvider router={router} />
+    </MantineProvider>
   </StrictMode>,
 )
