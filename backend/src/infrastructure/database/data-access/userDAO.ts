@@ -108,4 +108,19 @@ export default class UserDAO implements IUserDAO {
        
     }
 
+    public async findForAuth(filter: Partial<User>): Promise<User & { password: string }> {
+        const condition = []
+
+        if (filter.id) condition.push(eq(usersTable.id, filter.id))
+        if (filter.gmail) condition.push(eq(usersTable.gmail, filter.gmail))
+        if (filter.username) condition.push(eq(usersTable.username, filter.username))
+
+        const findResult = await this.connection
+            .select()
+            .from(usersTable)
+            .where(and(...condition))
+            .limit(1)
+
+        return findResult[0]
+    }
 }

@@ -1,7 +1,7 @@
 import * as bcrypt from "bcrypt";
 
 
-export default class Encryptor implements IEncryptor {
+class Encryptor implements IEncryptor {
     private saltRounds: number
     
     constructor(saltRounds: number = 10) {
@@ -19,3 +19,5 @@ export default class Encryptor implements IEncryptor {
         return isMatch
     }
 }
+
+export default new Encryptor();

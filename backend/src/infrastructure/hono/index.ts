@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 
 import userRouter from './routes/userRouter'
+import authRouter from './routes/authRouter'
 
 
 const app = new Hono({ strict: false }).basePath('/api')
@@ -11,6 +12,7 @@ app.get("/health", (c) => {
 })
 
 app.route("/users", userRouter)
+app.route("/auth", authRouter)
 
 
 serve({

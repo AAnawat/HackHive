@@ -6,4 +6,5 @@ export default interface IUserDAO {
     create(payload: Partial<User>, password: string): Promise<User>
     update(id: number, payload: Partial<User>, password?: string): Promise<boolean>
     delete(id: number): Promise<boolean>
+    findForAuth(filter: Partial<User>): Promise<User & { password: string }>
 }

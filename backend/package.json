@@ -16,6 +16,8 @@
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.3",
     "hono": "^4.8.9",
+    "jsonwebtoken": "^9.0.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "pg": "^8.16.3",
     "zod": "^4.1.8"
   },

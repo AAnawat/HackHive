@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import UserController from "../../../controllers/userController";
 import ListUsers from "../../../use-cases/user/list";
 import serviceDAO from "../../../config/serviceDAO";
-import Encryptor from "../../utils/encryptor/encryptor";
+import encryptor from "../../utils/encryptor/encryptor";
 import createUserValidator from "../../validator/user/createUser";
 import CreateUser from "../../../use-cases/user/create";
 
@@ -10,7 +10,7 @@ import CreateUser from "../../../use-cases/user/create";
 const router = new Hono({ strict: false })
 const controller = new UserController(
     new ListUsers(serviceDAO.user),
-    new CreateUser(serviceDAO.user, createUserValidator, new Encryptor())
+    new CreateUser(serviceDAO.user, createUserValidator, encryptor)
 )
 
 

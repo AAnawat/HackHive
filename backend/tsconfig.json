@@ -12,7 +12,8 @@
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "outDir": "./dist",
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "esModuleInterop": true,
   },
   "exclude": ["node_modules"]
 }
