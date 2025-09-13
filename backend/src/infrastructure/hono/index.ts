@@ -1,12 +1,16 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 
+import userRouter from './routes/userRouter'
 
-const app = new Hono().basePath("/api")
 
-app.get('/', async (c) => {
-  return c.text('sorry nigger')
+const app = new Hono({ strict: false }).basePath('/api')
+
+app.get("/health", (c) => {
+  return c.json({message: "Still Running."})
 })
+
+app.route("/users", userRouter)
 
 
 serve({

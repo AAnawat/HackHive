@@ -1,5 +1,5 @@
 CREATE TYPE "public"."difficulty" AS ENUM('Easy', 'Medium', 'Hard');--> statement-breakpoint
-CREATE TYPE "public"."gender" AS ENUM('male', 'female');--> statement-breakpoint
+CREATE TYPE "public"."gender" AS ENUM('Male', 'Female');--> statement-breakpoint
 CREATE TABLE "catagories" (
 	"id" bigserial PRIMARY KEY NOT NULL,
 	"catagory" varchar(255) NOT NULL
@@ -39,7 +39,6 @@ CREATE TABLE "users" (
 	"gmail" varchar(255) NOT NULL,
 	"password" varchar(255) NOT NULL,
 	"profile_path" varchar(255) DEFAULT '/PFP/default.png' NOT NULL,
-	"gender" "gender" NOT NULL,
 	CONSTRAINT "users_gmail_unique" UNIQUE("gmail")
 );
 --> statement-breakpoint
