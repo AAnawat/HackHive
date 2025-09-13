@@ -35,33 +35,19 @@ const yellowTheme: MantineColorsTuple = [
   '#928d03'
 ];
 
-const blackTheme: MantineColorsTuple = [
-  '#f5f5f5',
-  '#e0e0e0',
-  '#bdbdbd',
-  '#9e9e9e',
-  '#757575',
-  '#424242',
-  '#303030',
-  '#212121',
-  '#1b1b1b',
-  '#000000',
-];
-
 const theme = createTheme({
   colors: {
-    yellowTheme,
-    blackTheme
+    yellowTheme
   },
   primaryColor: 'yellowTheme',
-  fontFamily: "Playpen Sans Thai, cursive"
+  fontFamily: "Roboto, sans-serif"
 });
 
 
 // Main app
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <MantineProvider theme={theme}>
+    <MantineProvider defaultColorScheme='dark' theme={theme}>
       <Notifications />
       <RouterProvider router={router} />
     </MantineProvider>

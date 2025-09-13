@@ -2,7 +2,7 @@
   "name": "hackhive_backend",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/infrastructure/hono/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:check": "drizzle-kit check",
