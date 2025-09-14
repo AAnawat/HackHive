@@ -15,15 +15,14 @@ router.post('/login', async (c) => {
     try {
 
         const body = await c.req.json();
-        if (!(body.email && body.password)) {
+        if (!(body.gmail && body.password)) {
             throw new Error("Missing required fields");
         }
 
-        const token = await controller.login(body.email, body.password);
+        const token = await controller.login(body.gmail, body.password);
         return c.json({ token }, 200);
         
     } catch (error) {
-        console.log(error);
         if (error instanceof Error) {
             return c.json({ error: error.message }, 400);
         }

@@ -1,15 +1,26 @@
 import type CreateUser from "../use-cases/user/create";
 import type ListUsers from "../use-cases/user/list";
 import User from "../entities/user";
-import { th } from "zod/v4/locales";
+import type Authorize from "../use-cases/auth/authorize";
+import type UpdateUser from "../use-cases/user/update";
+import type GetUser from "../use-cases/user/get";
+import type DeleteUser from "../use-cases/user/delete";
 
 export default class UserController {
     private listUsers: ListUsers
     private createUser: CreateUser
+    private updateUser: UpdateUser
+    private authorize: Authorize
+    private findUser: GetUser
+    private deleteUser: DeleteUser
 
-    constructor(listUsers: ListUsers, createUser: CreateUser) {
+    constructor(listUsers: ListUsers, createUser: CreateUser, updateUser: UpdateUser, authorize: Authorize, findUser: GetUser, deleteUser: DeleteUser) {
         this.listUsers = listUsers
         this.createUser = createUser
+        this.updateUser = updateUser
+        this.authorize = authorize
+        this.findUser = findUser
+        this.deleteUser = deleteUser
     }
 
 
@@ -18,12 +29,24 @@ export default class UserController {
 
             const users = await this.listUsers.call(page, perPage)
             return users
-            
-        } catch (error) {
-            
-            console.error(error)
-            throw new Error("Can't list users")
 
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message)
+            }
+        }
+    }
+
+    public async find(id: number): Promise<User> {
+        try {
+
+            const user = await this.findUser.call(id)
+            return user
+
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message)
+            }
         }
     }
 
@@ -45,4 +68,41 @@ export default class UserController {
         }
     }
 
+    public async update(token: string, id: number, payload: Partial<User>, password: string): Promise<Boolean> {
+        try {
+
+            if (!token) throw new Error("No token provided")
+            const authorizedUser = await this.authorize.call(token)
+            if (authorizedUser.id !== id) {
+                throw new Error("Unauthorized")
+            }
+
+            const updatedUser = await this.updateUser.call(id, payload, password)
+            return updatedUser
+
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message)
+            }
+        }
+    }
+
+    public async delete(token: string, id: number): Promise<void> {
+        try {
+
+            if (!token) throw new Error("No token provided")
+            const authorizedUser = await this.authorize.call(token)
+            if (authorizedUser.id !== id) {
+                throw new Error("Unauthorized")
+            }
+
+            const deltedResult = await this.deleteUser.call(id)
+            if (!deltedResult) throw new Error("User deleted failed")
+            
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message)
+            }
+        }
+    }
 }

@@ -5,12 +5,22 @@ import serviceDAO from "../../../config/serviceDAO";
 import encryptor from "../../utils/encryptor/encryptor";
 import createUserValidator from "../../validator/user/createUser";
 import CreateUser from "../../../use-cases/user/create";
+import UpdateUser from "../../../use-cases/user/update";
+import Authorize from "../../../use-cases/auth/authorize";
+import tokenManager from "../../utils/tokenManager/tokenManager";
+import updateUserValidator from "../../validator/user/updateUser";
+import GetUser from "../../../use-cases/user/get";
+import DeleteUser from "../../../use-cases/user/delete";
 
 
 const router = new Hono({ strict: false })
 const controller = new UserController(
     new ListUsers(serviceDAO.user),
-    new CreateUser(serviceDAO.user, createUserValidator, encryptor)
+    new CreateUser(serviceDAO.user, createUserValidator, encryptor),
+    new UpdateUser(serviceDAO.user, updateUserValidator, encryptor),
+    new Authorize(tokenManager),
+    new GetUser(serviceDAO.user),
+    new DeleteUser(serviceDAO.user)
 )
 
 
@@ -25,9 +35,29 @@ router.get('/', async (c) => {
         else return c.json({ message: "No users found" })
 
     } catch (error) {
-        return c.json({ error }, 500)
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400)
+        }
+        return c.json({ error: "Unknown error" }, 500)
     }
 
+})
+
+router.get('/:id', async (c) => {
+    try {
+
+        const id = parseInt(c.req.param('id'))
+
+        const user = await controller.find(id)
+        if (!user) return c.json({ message: "User not found" }, 404)
+        return c.json(user)
+
+    } catch (error) {
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400)
+        }
+        return c.json({ error: "Unknown error" }, 500)
+    }
 })
 
 router.post('/', async (c) => {
@@ -53,5 +83,50 @@ router.post('/', async (c) => {
         return c.json({ error: "Unknown error" }, 500)
     }
 })
+
+router.put('/:id', async (c) => {
+    try {
+
+        const id = parseInt(c.req.param('id'))
+
+        const token = c.req.header('Authorization').split(' ')[1]
+        if (!token) throw new Error("No token provided")
+
+        const body = await c.req.json()
+        const payload: any = {}
+        if (body.gmail) payload.gmail = body.gmail
+        if (body.username) payload.username = body.username
+        if (body.pfp_path) payload.pfp_path = body.pfp_path
+
+        const updatedUser = await controller.update(token, id, payload, body.password)
+        if (!updatedUser) throw new Error("User not updated")
+
+        return c.json({ message: "User updated successfully" }, 200)
+        
+    } catch (error) {
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400)
+        }
+        return c.json({ error: "Unknown error" }, 500)
+    }
+})
+
+router.delete('/:id', async (c) => {
+    try {
+        const id = parseInt(c.req.param('id'))
+        const token = c.req.header('Authorization').split(' ')[1]
+        if (!token) throw new Error("No token provided")
+
+        await controller.delete(token, id)
+        return c.json({ message: "User deleted successfully" }, 200)
+
+    } catch (error) {
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400)
+        }
+        return c.json({ error: "Unknown error" }, 500)
+    }
+})
+
 
 export default router
