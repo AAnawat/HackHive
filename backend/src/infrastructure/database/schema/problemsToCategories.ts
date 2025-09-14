@@ -1,13 +1,13 @@
 import { bigint, pgTable, primaryKey } from "drizzle-orm/pg-core";
 import { problemsTable } from "./problems";
-import { catagoriesTable } from "./catagories";
+import { categoriesTable } from "./categories";
 import { relations } from "drizzle-orm";
 
 export const problemsToCategoriesTable = pgTable("problemsToCategories", {
     problem_id: bigint({mode: "number"}).notNull().references(() => problemsTable.id, {onDelete: "cascade"}),
-    catagory_id: bigint({mode: "number"}).notNull().references(() => catagoriesTable.id, {onDelete: "set null"})
+    category_id: bigint({mode: "number"}).notNull().references(() => categoriesTable.id, {onDelete: "set null"})
 }, (t) => [
-    primaryKey({columns: [t.problem_id, t.catagory_id]})
+    primaryKey({columns: [t.problem_id, t.category_id]})
 ])
 
 export const problemsToCategoriesRelations = relations(problemsToCategoriesTable, ({one}) => ({
@@ -15,8 +15,8 @@ export const problemsToCategoriesRelations = relations(problemsToCategoriesTable
         fields: [problemsToCategoriesTable.problem_id],
         references: [problemsTable.id]
     }),
-    catagoriesTable: one(catagoriesTable, {
-        fields: [problemsToCategoriesTable.catagory_id],
-        references: [catagoriesTable.id]
+    categoriesTable: one(categoriesTable, {
+        fields: [problemsToCategoriesTable.category_id],
+        references: [categoriesTable.id]
     })
 }))

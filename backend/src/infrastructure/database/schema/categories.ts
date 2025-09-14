@@ -2,11 +2,11 @@ import { relations } from "drizzle-orm";
 import { bigserial, pgTable, varchar } from "drizzle-orm/pg-core";
 import { problemsToCategoriesTable } from "./problemsToCategories";
 
-export const catagoriesTable = pgTable("catagories", {
+export const categoriesTable = pgTable("categories", {
     id: bigserial({mode: "number"}).primaryKey(),
-    catagory: varchar({length: 255}).notNull()
+    category: varchar({length: 255}).notNull()
 })
 
-export const catagoriesRelations = relations(catagoriesTable, ({many}) => ({
+export const categoriesRelations = relations(categoriesTable, ({many}) => ({
     problemsToCategoriesTable: many(problemsToCategoriesTable)
 }))

@@ -13,7 +13,7 @@ export default class UserDAO implements IUserDAO {
     }
 
 
-    public async find(filter: Partial<User>, page: number, perPage: number): Promise<User[]> {
+    public async find(filter: Partial<Omit<User, 'pfp_path'>>, page: number, perPage: number): Promise<User[]> {
 
         const condition = []
 
@@ -38,7 +38,7 @@ export default class UserDAO implements IUserDAO {
     }
 
 
-    public async findOne(filter: Partial<User>): Promise<User> {
+    public async findOne(filter: Partial<Omit<User, 'pfp_path'>>): Promise<User> {
 
         const condition = []
 
@@ -108,7 +108,7 @@ export default class UserDAO implements IUserDAO {
        
     }
 
-    public async findForAuth(filter: Partial<User>): Promise<User & { password: string }> {
+    public async findForAuth(filter: Partial<Omit<User, 'pfp_path'>>): Promise<User & { password: string }> {
         const condition = []
 
         if (filter.id) condition.push(eq(usersTable.id, filter.id))

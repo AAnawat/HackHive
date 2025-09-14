@@ -1,5 +1,4 @@
 import Entity from "./entity"
-import type Hint from "./hint"
 
 export default class Problem extends Entity<Problem> {
     id!: number
@@ -9,5 +8,7 @@ export default class Problem extends Entity<Problem> {
     dislike!: number
     difficulty!: "Easy" | "Medium" | "Hard"
 
-    hints?: Hint[]
+    hints?: string[]
+    categories?: string[]
+    
 }

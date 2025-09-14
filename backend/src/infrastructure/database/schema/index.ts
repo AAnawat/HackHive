@@ -1,4 +1,4 @@
-export * from "./catagories"
+export * from "./categories"
 export * from "./hints"
 export * from "./problems"
 export * from "./problemsToCategories"
