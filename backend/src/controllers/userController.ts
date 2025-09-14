@@ -1,6 +1,7 @@
 import type CreateUser from "../use-cases/user/create";
 import type ListUsers from "../use-cases/user/list";
 import User from "../entities/user";
+import { th } from "zod/v4/locales";
 
 export default class UserController {
     private listUsers: ListUsers
@@ -33,10 +34,14 @@ export default class UserController {
             return createdUser
 
         } catch (error) {
-
-            console.error(error)
-            throw new Error("Can't create user")
-
+            if (error instanceof Error) {
+                if (error.cause.toString().includes("duplicate key value")) {
+                    throw new Error("User already exists")
+                } else {
+                    console.error(error)
+                    throw new Error("Can't create user")
+                }
+            }
         }
     }
 

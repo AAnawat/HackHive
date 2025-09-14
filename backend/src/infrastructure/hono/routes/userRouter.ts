@@ -25,8 +25,7 @@ router.get('/', async (c) => {
         else return c.json({ message: "No users found" })
 
     } catch (error) {
-        console.log(error)
-        return c.json({ error: "Failed to process request" }, 500)
+        return c.json({ error }, 500)
     }
 
 })
@@ -48,7 +47,6 @@ router.post('/', async (c) => {
         return c.json({ message: "User created successfully" }, 201)
         
     } catch (error: unknown) {
-        console.log(error)
         if (error instanceof Error) {
             return c.json({ error: error.message }, 400)
         }
