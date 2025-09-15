@@ -4,9 +4,10 @@ export default class Problem extends Entity<Problem> {
     id!: number
     problem!: string
     description?: string
-    like!: number
-    dislike!: number
     difficulty!: "Easy" | "Medium" | "Hard"
+    
+    like?: number
+    dislike?: number
 
     hints?: string[]
     categories?: string[]

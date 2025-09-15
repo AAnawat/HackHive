@@ -5,7 +5,7 @@ import { relations } from "drizzle-orm";
 
 export const problemsToCategoriesTable = pgTable("problemsToCategories", {
     problem_id: bigint({mode: "number"}).notNull().references(() => problemsTable.id, {onDelete: "cascade"}),
-    category_id: bigint({mode: "number"}).notNull().references(() => categoriesTable.id, {onDelete: "set null"})
+    category_id: bigint({mode: "number"}).notNull().references(() => categoriesTable.id, {onDelete: "cascade"})
 }, (t) => [
     primaryKey({columns: [t.problem_id, t.category_id]})
 ])

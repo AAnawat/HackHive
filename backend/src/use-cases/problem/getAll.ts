@@ -10,7 +10,6 @@ export default class GetAllProblems {
 
 
     public async call(filter: IFindAllFilter, page: number, perPage: number) {
-        const problems = await this.problemDAO.findAll(filter, page, perPage);
-        return problems;
+        return await this.problemDAO.findAll(filter, page, perPage);
     }
 }
