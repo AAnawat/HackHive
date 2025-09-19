@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1757745841379,
-      "tag": "0000_quick_eddie_brock",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1757746207201,
-      "tag": "0001_chief_eternals",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1757856139683,
-      "tag": "0002_flat_silvermane",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1757946005215,
-      "tag": "0003_motionless_talos",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1757946101621,
-      "tag": "0004_worthless_susan_delgado",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1757955238742,
-      "tag": "0005_wakeful_warstar",
+      "when": 1758303440247,
+      "tag": "0000_puzzling_hex",
       "breakpoints": true
     }
   ]

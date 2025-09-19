@@ -8,7 +8,8 @@ import {
     problemsToCategoriesTable,
     problemsTable,
     categoriesTable,
-    hintsTable
+    hintsTable,
+    problemsWithLikesView
 } from "../schema";
 
 
@@ -22,61 +23,67 @@ export default class ProblemDAO implements IProblemDAO {
 
     public async findAll(filter: IFindAllFilter, page: number, perPage: number): Promise<Problem[]> {
         const conditions: any = [];
-        if (filter.problem) conditions.push(like(problemsTable.problem, `${filter.problem}%`));
-        if (filter.difficulty) conditions.push(eq(problemsTable.difficulty, filter.difficulty));
+        if (filter.problem) conditions.push(like(problemsWithLikesView.problem, `${filter.problem}%`));
+        if (filter.difficulty) conditions.push(eq(problemsWithLikesView.difficulty, filter.difficulty));
         if (filter.categories && filter.categories.length > 0) {
             const subquery = this.connection
-                .select({ id: problemsTable.id })
-                .from(problemsTable)
-                .innerJoin(problemsToCategoriesTable, eq(problemsToCategoriesTable.problem_id, problemsTable.id))
+                .select({ id: problemsWithLikesView.id })
+                .from(problemsWithLikesView)
+                .innerJoin(problemsToCategoriesTable, eq(problemsToCategoriesTable.problem_id, problemsWithLikesView.id))
                 .innerJoin(categoriesTable, eq(categoriesTable.id, problemsToCategoriesTable.category_id))
                 .where(inArray(categoriesTable.category, filter.categories))
-                .groupBy(problemsTable.id)
+                .groupBy(problemsWithLikesView.id)
                 .having(sql`COUNT(DISTINCT ${categoriesTable.category}) >= ${filter.categories.length}`);
 
-            conditions.push(inArray(problemsTable.id, subquery));
+            conditions.push(inArray(problemsWithLikesView.id, subquery));
         }
 
-        const findResult = await this.connection.query.problemsTable.findMany({
-            with: {
-                problemsToCategoriesTable: {
-                    with: {
-                        categoriesTable: true
-                    }
-                },
-                hintsTable: true
-            },
-            where: and(...conditions),
-            limit: perPage,
-            offset: (page - 1) * perPage,
-            orderBy: problemsTable.id
-        });
+        const findResult = await this.connection.select({
+                id: problemsWithLikesView.id,
+                problem: problemsWithLikesView.problem,
+                description: problemsWithLikesView.description,
+                difficulty: problemsWithLikesView.difficulty,
+                score: problemsWithLikesView.score,
+                likes: problemsWithLikesView.likes,
+                hints: sql<string[]>`ARRAY_AGG(DISTINCT ${hintsTable.hint})`.as("hints"),
+                categories: sql<string[]>`ARRAY_AGG(DISTINCT ${categoriesTable.category})`.as("categories"),
+        })
+            .from(problemsWithLikesView)
+            .leftJoin(problemsToCategoriesTable, eq(problemsToCategoriesTable.problem_id, problemsWithLikesView.id))
+            .leftJoin(categoriesTable, eq(categoriesTable.id, problemsToCategoriesTable.category_id))
+            .leftJoin(hintsTable, eq(hintsTable.problem_id, problemsWithLikesView.id))
+            .where(and(...conditions))
+            .limit(perPage)
+            .offset((page - 1) * perPage)
+            .orderBy(problemsWithLikesView.id)
+            .groupBy(problemsWithLikesView.id, problemsWithLikesView.problem, problemsWithLikesView.description, problemsWithLikesView.difficulty, problemsWithLikesView.score, problemsWithLikesView.likes);
 
-        const output = []
-        for (let problem of findResult) {
-            output.push(this.mapToProblemEntity(problem))
-        }
-
-        return output
+        return findResult;
     }
 
     public async findOne(filter: number): Promise<Problem> {
-
-        const findResult = await this.connection.query.problemsTable.findFirst({
-            with: {
-                problemsToCategoriesTable: {
-                    with: {
-                        categoriesTable: true
-                    }
-                },
-                hintsTable: true
-            },
-            where: eq(problemsTable.id, filter)
+        
+        const findResult = await this.connection.select({
+                id: problemsWithLikesView.id,
+                problem: problemsWithLikesView.problem,
+                description: problemsWithLikesView.description,
+                difficulty: problemsWithLikesView.difficulty,
+                score: problemsWithLikesView.score,
+                likes: problemsWithLikesView.likes,
+                hints: sql<string[]>`ARRAY_AGG(DISTINCT ${hintsTable.hint})`.as("hints"),
+                categories: sql<string[]>`ARRAY_AGG(DISTINCT ${categoriesTable.category})`.as("categories"),
         })
+            .from(problemsWithLikesView)
+            .leftJoin(problemsToCategoriesTable, eq(problemsToCategoriesTable.problem_id, problemsWithLikesView.id))
+            .leftJoin(categoriesTable, eq(categoriesTable.id, problemsToCategoriesTable.category_id))
+            .leftJoin(hintsTable, eq(hintsTable.problem_id, problemsWithLikesView.id))
+            .where(eq(problemsWithLikesView.id, filter))
+            .orderBy(problemsWithLikesView.id)
+            .groupBy(problemsWithLikesView.id, problemsWithLikesView.problem, problemsWithLikesView.description, problemsWithLikesView.difficulty, problemsWithLikesView.score, problemsWithLikesView.likes);
 
         if (!findResult) throw new Error("Problem not found");
 
-        return this.mapToProblemEntity(findResult);
+        return findResult[0];
 
     }
 
@@ -86,8 +93,6 @@ export default class ProblemDAO implements IProblemDAO {
             const insertedProblem = (await tx.insert(problemsTable).values({
                 problem: payload.problem,
                 description: payload.description,
-                like: payload.like,
-                dislike: payload.dislike,
                 difficulty: payload.difficulty
             }).returning())[0];
 
@@ -178,8 +183,6 @@ export default class ProblemDAO implements IProblemDAO {
             const fieldsToUpdate: any = {};
             if (payload.problem) fieldsToUpdate.problem = payload.problem;
             if (payload.description) fieldsToUpdate.description = payload.description;
-            if (payload.like !== undefined) fieldsToUpdate.like = payload.like;
-            if (payload.dislike !== undefined) fieldsToUpdate.dislike = payload.dislike;
             if (payload.difficulty) fieldsToUpdate.difficulty = payload.difficulty;
             if (Object.keys(fieldsToUpdate).length > 0) {
                 await tx.update(problemsTable).set(fieldsToUpdate).where(eq(problemsTable.id, id));
@@ -213,21 +216,5 @@ export default class ProblemDAO implements IProblemDAO {
         });
 
         return deleteResult;
-    }
-
-    private mapToProblemEntity(dbRecord: any): Problem {
-        return {
-            id: dbRecord.id,
-            problem: dbRecord.problem,
-            description: dbRecord.description,
-            like: dbRecord.like,
-            dislike: dbRecord.dislike,
-            difficulty: dbRecord.difficulty,
-
-            hints: dbRecord.hintsTable ? dbRecord.hintsTable.map((hintObj: { hint: any; }) => hintObj.hint) : [],
-            categories: dbRecord.problemsToCategoriesTable
-                ? dbRecord.problemsToCategoriesTable.map((ptc: { categoriesTable: { category: any; }; }) => ptc.categoriesTable.category)
-                : []
-        }
     }
 }

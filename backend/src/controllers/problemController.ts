@@ -39,6 +39,7 @@ export default class ProblemController {
             return problems;
 
         } catch (error) {
+            console.log(error);
             if (error instanceof Error) {
                 const errorMessage = error.message.toString();
                 if (errorMessage.includes("Failed query")) throw new Error("Invalid filter");

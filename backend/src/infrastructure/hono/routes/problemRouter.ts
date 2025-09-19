@@ -9,7 +9,6 @@ import updateProblem from "../../../use-cases/problem/update";
 import updateProblemValidator from "../../validator/problem/updateProblem";
 import DeleteProblem from "../../../use-cases/problem/delete";
 import AuthorizeAdmin from "../../../use-cases/auth/authorizeAdmin";
-import { th } from "zod/v4/locales";
 
 const router = new Hono({ strict: false });
 const controller = new ProblemController(
@@ -50,7 +49,7 @@ router.get("/:id", async (c) => {
         if (isNaN(filter)) throw new Error("Invalid problem ID");
 
         const problemResult = await controller.get(filter);
-        return c.json({ problem: problemResult });
+        return c.json(problemResult);
 
     } catch (error) {
         if (error instanceof Error) {

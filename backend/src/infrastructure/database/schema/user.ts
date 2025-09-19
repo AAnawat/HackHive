@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { bigserial, pgTable, pgEnum, varchar } from "drizzle-orm/pg-core";
+import { bigserial, pgTable, varchar } from "drizzle-orm/pg-core";
 import { solvedRecordsTable } from "./solvedRecords";
 
 export const usersTable = pgTable("users", {
@@ -11,5 +11,5 @@ export const usersTable = pgTable("users", {
 })
 
 export const usersRelations = relations(usersTable, ({many}) => ({
-    solvedRecordsTable: many(solvedRecordsTable)
+    solvedRecordsTable: many(solvedRecordsTable),
 }))
