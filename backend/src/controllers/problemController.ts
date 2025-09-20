@@ -1,11 +1,13 @@
 import type Problem from "../entities/problem";
 import type { IFindAllFilter } from "../interfaces/DAO/problemDAO";
+import type Authorize from "../use-cases/auth/authorize";
 import type AuthorizeAdmin from "../use-cases/auth/authorizeAdmin";
 import type CreateProblem from "../use-cases/problem/create";
 import type DeleteProblem from "../use-cases/problem/delete";
 import type GetProblem from "../use-cases/problem/get";
 import type GetAllProblems from "../use-cases/problem/getAll";
 import type updateProblem from "../use-cases/problem/update";
+import type VoteProblem from "../use-cases/problem/vote";
 
 export default class ProblemController {
     private getAllProblems: GetAllProblems;
@@ -13,7 +15,9 @@ export default class ProblemController {
     private createProblem: CreateProblem;
     private updateProblem: updateProblem;
     private deleteProblem: DeleteProblem;
+    private voteProblem: VoteProblem;
     private authorizeAdmin: AuthorizeAdmin;
+    private authorize: Authorize;
 
     constructor(
         getAllProblems: GetAllProblems,
@@ -21,14 +25,18 @@ export default class ProblemController {
         createProblem: CreateProblem,
         updateProblem: updateProblem,
         deleteProblem: DeleteProblem,
-        authorizeAdmin: AuthorizeAdmin
+        voteProblem: VoteProblem,
+        authorizeAdmin: AuthorizeAdmin,
+        authorize: Authorize
     ) {
         this.getAllProblems = getAllProblems;
         this.getProblem = getProblem;
         this.createProblem = createProblem;
         this.updateProblem = updateProblem;
         this.deleteProblem = deleteProblem;
+        this.voteProblem = voteProblem;
         this.authorizeAdmin = authorizeAdmin;
+        this.authorize = authorize;
     }
 
 
@@ -102,6 +110,21 @@ export default class ProblemController {
             if (!isAdmin) throw new Error("Unauthorized");
 
             return await this.deleteProblem.call(id);
+            
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message);
+            }
+        }
+    }
+
+    public async vote(token: string, problemId: number, isLiked: boolean): Promise<boolean> {
+        try {
+
+            const user = await this.authorize.call(token);
+            if (!user) throw new Error("Unauthorized");
+
+            return await this.voteProblem.call(user.id, problemId, isLiked);
             
         } catch (error) {
             if (error instanceof Error) {

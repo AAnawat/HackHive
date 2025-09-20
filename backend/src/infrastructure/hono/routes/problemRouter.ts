@@ -9,6 +9,9 @@ import updateProblem from "../../../use-cases/problem/update";
 import updateProblemValidator from "../../validator/problem/updateProblem";
 import DeleteProblem from "../../../use-cases/problem/delete";
 import AuthorizeAdmin from "../../../use-cases/auth/authorizeAdmin";
+import Authorize from "../../../use-cases/auth/authorize";
+import tokenManager from "../../utils/tokenManager/tokenManager";
+import VoteProblem from "../../../use-cases/problem/vote";
 
 const router = new Hono({ strict: false });
 const controller = new ProblemController(
@@ -17,7 +20,9 @@ const controller = new ProblemController(
     new CreateProblem(serviceDAO.problem, createProblemValidator),
     new updateProblem(serviceDAO.problem, updateProblemValidator),
     new DeleteProblem(serviceDAO.problem),
-    new AuthorizeAdmin()
+    new VoteProblem(serviceDAO.solve),
+    new AuthorizeAdmin(),
+    new Authorize(tokenManager)
 )
 
 router.get("/", async (c) => {
@@ -117,6 +122,32 @@ router.delete("/:id", async (c) => {
         const deleteResult = await controller.delete(adminToken, id);
         if (deleteResult) return c.json({ message: "Problem deleted successfully" });
         else throw new Error("Problem not deleted");
+        
+    } catch (error) {
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400);
+        }
+        return c.json({ error: "Unknown error" }, 500);
+    }
+});
+
+router.post("/:id/vote", async (c) => {
+    try {
+
+        const problemId = parseInt(c.req.param("id"));
+        if (isNaN(problemId)) throw new Error("Invalid problem ID");
+
+        let token = c.req.header("Authorization");
+        if (!token) throw new Error("Missing Authorization header");
+        else token = token.split(" ")[1] as string;
+
+        const body = await c.req.json();
+        if (body.isLiked === undefined) throw new Error("Missing isLiked field");
+        const isLiked = body.isLiked as boolean;
+
+        const voteResult = await controller.vote(token, problemId, isLiked);
+        if (voteResult) return c.json({ message: "Vote recorded successfully" });
+        else throw new Error("Vote not recorded");
         
     } catch (error) {
         if (error instanceof Error) {
