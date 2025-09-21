@@ -15,9 +15,12 @@
     "@mantine/hooks": "^8.2.8",
     "@mantine/notifications": "^8.2.8",
     "@tailwindcss/vite": "^4.1.13",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.8.2",
+    "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.1.13"
   },
   "devDependencies": {

@@ -10,6 +10,7 @@ import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 
 import HomePage from './pages/homePage';
+import XtermPage from './pages/xtermPage';
 
 
 // React router system
@@ -17,6 +18,10 @@ const router = createBrowserRouter([
   {
     path: "/",
     Component: HomePage
+  },
+  {
+    path: "/xterm",
+    Component: XtermPage
   }
 ]);
 
