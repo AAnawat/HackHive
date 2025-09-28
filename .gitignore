@@ -40,3 +40,8 @@ frontend/*.local
 
 # misc
 .DS_Store
+
+# terraform
+terraform/state
+terraform/.terraform
+terraform/value/*
