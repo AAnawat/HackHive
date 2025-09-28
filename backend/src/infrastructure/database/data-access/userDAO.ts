@@ -2,8 +2,8 @@ import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from '../schema'
 import User from "../../../entities/user";
 import type IUserDAO from "../../../interfaces/DAO/userDAO";
-import { and, eq, type Equal } from "drizzle-orm";
-import { usersTable } from "../schema";
+import { and, eq, sql } from "drizzle-orm";
+import { usersTable, solvedRecordsTable } from "../schema";
 
 export default class UserDAO implements IUserDAO {
     connection!: NodePgDatabase<typeof schema>;
@@ -26,10 +26,13 @@ export default class UserDAO implements IUserDAO {
                 id: usersTable.id,
                 username: usersTable.username,
                 gmail: usersTable.gmail,
-                pfp_path: usersTable.pfp_path
+                pfp_path: usersTable.pfp_path,
+                score: sql`COALESCE(SUM(${solvedRecordsTable.solve_score}), 0)`.mapWith(Number).as('score')
             })
             .from(usersTable)
+            .leftJoin(solvedRecordsTable, eq(usersTable.id, solvedRecordsTable.user_id))
             .where(and(...condition))
+            .groupBy(usersTable.id)
             .limit(perPage)
             .offset((perPage * (page - 1)))
 
@@ -51,10 +54,13 @@ export default class UserDAO implements IUserDAO {
                 id: usersTable.id,
                 username: usersTable.username,
                 gmail: usersTable.gmail,
-                pfp_path: usersTable.pfp_path
+                pfp_path: usersTable.pfp_path,
+                score: sql`COALESCE(SUM(${solvedRecordsTable.solve_score}), 0)`.mapWith(Number).as('score')
             })
             .from(usersTable)
+            .leftJoin(solvedRecordsTable, eq(usersTable.id, solvedRecordsTable.user_id))
             .where(and(...condition))
+            .groupBy(usersTable.id)
             .limit(1)
 
         return findResult[0]
@@ -69,7 +75,6 @@ export default class UserDAO implements IUserDAO {
             gmail: payload.gmail,
             password: password
         }
-        if (payload.pfp_path) insertingValue.pfp_path = payload.pfp_path
 
         const createResult = await this.connection
             .insert(usersTable)

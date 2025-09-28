@@ -72,8 +72,7 @@ router.post('/', async (c) => {
             gmail: body.gmail,
             username: body.username,
         }
-        if (body.pfp_path) payload.pfp_path = body.pfp_path
-        const createdUser = await controller.create(payload, body.password)
+        await controller.create(payload, body.password)
         return c.json({ message: "User created successfully" }, 201)
         
     } catch (error: unknown) {

@@ -5,4 +5,5 @@ export default class User extends Entity<User> {
     username!: string
     gmail!: string
     pfp_path!: string
+    score?: number
 }
