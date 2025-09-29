@@ -45,3 +45,6 @@ frontend/*.local
 terraform/state
 terraform/.terraform
 terraform/value/*
+
+# build directory
+*dist/

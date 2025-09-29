@@ -1,9 +1,11 @@
-FROM ubuntu:22.04
+####### BUILD #########
+FROM ubuntu:22.04 AS build
 
 USER root
 
 RUN apt-get update && \
     apt-get install -y \
+    git \
     curl \
     build-essential \
     python3 \
@@ -12,14 +14,44 @@ RUN apt-get update && \
 
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
     apt-get install -y nodejs && \
-    npm install -g npm
+    npm install -g npm 
 
 WORKDIR /server
 
-COPY package*.json ./
+COPY package.json ./
 
 RUN npm install
 
 COPY index.js ./
+
+####### main #########
+FROM ubuntu:22.04
+
+USER root
+
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/* 
+
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g npm 
+
+ARG USERNAME=player
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+RUN groupadd --gid $USER_GID $USERNAME && \
+    useradd --uid $USER_UID --gid $USER_GID -m -s /bin/bash $USERNAME
+
+RUN cp /etc/skel/.bashrc /home/player/.bashrc && \
+    chown player:player /home/player/.bashrc
+
+WORKDIR /server
+
+COPY --from=build /server/node_modules ./node_modules
+COPY --from=build /server/package*.json ./
+COPY --from=build /server/index.js ./
 
 CMD ["npm", "start"]
