@@ -8,6 +8,13 @@
       "when": 1758303440247,
       "tag": "0000_puzzling_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1759252064724,
+      "tag": "0001_noisy_proudstar",
+      "breakpoints": true
     }
   ]
 }
