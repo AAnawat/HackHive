@@ -42,11 +42,11 @@ services:
       - POSTGRES_DB=hackhive
     networks:
       - hackhive-network
-  baseimage:
+  problem:
     build:
-      context: ./base-image
-      dockerfile: dockerfile
-    container_name: hackhive-baseImage
+      context: ./problems/
+      dockerfile: getting-start.dockerfile
+    container_name: hackhive-problem
     ports:
       - "1234:1234"
     networks:
