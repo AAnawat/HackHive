@@ -33,4 +33,5 @@ variable "database_user" {
 variable "database_pass" {
   description = "Password for RDS"
   type        = string
+  sensitive   = true
 }
