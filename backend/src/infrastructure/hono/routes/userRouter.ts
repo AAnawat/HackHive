@@ -11,16 +11,20 @@ import tokenManager from "../../utils/tokenManager/tokenManager";
 import updateUserValidator from "../../validator/user/updateUser";
 import GetUser from "../../../use-cases/user/get";
 import DeleteUser from "../../../use-cases/user/delete";
+import UserPasswordCheck from "../../../use-cases/auth/userPasswordCheck";
+import PictureManager from "../../utils/pictureManager/pictureManager";
+import s3Client from "../../s3";
 
 
 const router = new Hono({ strict: false })
 const controller = new UserController(
     new ListUsers(serviceDAO.user),
     new CreateUser(serviceDAO.user, createUserValidator, encryptor),
-    new UpdateUser(serviceDAO.user, updateUserValidator, encryptor),
+    new UpdateUser(serviceDAO.user, updateUserValidator, encryptor, new PictureManager(s3Client)),
     new Authorize(tokenManager),
     new GetUser(serviceDAO.user),
-    new DeleteUser(serviceDAO.user)
+    new DeleteUser(serviceDAO.user, new PictureManager(s3Client)),
+    new UserPasswordCheck(encryptor, serviceDAO.user)
 )
 
 
@@ -91,13 +95,22 @@ router.put('/:id', async (c) => {
         const token = c.req.header('Authorization').split(' ')[1]
         if (!token) throw new Error("No token provided")
 
-        const body = await c.req.json()
+        const body = await c.req.parseBody()
         const payload: any = {}
         if (body.gmail) payload.gmail = body.gmail
         if (body.username) payload.username = body.username
-        if (body.pfp_path) payload.pfp_path = body.pfp_path
+        if (body.newPass || body.oldPass) {
+            if (!(body.newPass && body.oldPass)) {
+                throw new Error("Both old and new passwords are required to change password")
+            } else {
+                payload.newPass = body.newPass
+                payload.oldPass = body.oldPass
+            }
+        }
+        if (body.profile_pic) payload.profile_pic = body.profile_pic
 
-        const updatedUser = await controller.update(token, id, payload, body.password)
+
+        const updatedUser = await controller.update(token, id, payload, body.newPass as string, body.oldPass as string)
         if (!updatedUser) throw new Error("User not updated")
 
         return c.json({ message: "User updated successfully" }, 200)

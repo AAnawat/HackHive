@@ -5,6 +5,7 @@ import type Authorize from "../use-cases/auth/authorize";
 import type UpdateUser from "../use-cases/user/update";
 import type GetUser from "../use-cases/user/get";
 import type DeleteUser from "../use-cases/user/delete";
+import type UserPasswordCheck from "../use-cases/auth/userPasswordCheck";
 
 export default class UserController {
     private listUsers: ListUsers
@@ -13,14 +14,16 @@ export default class UserController {
     private authorize: Authorize
     private findUser: GetUser
     private deleteUser: DeleteUser
+    private userPasswordCheck: UserPasswordCheck
 
-    constructor(listUsers: ListUsers, createUser: CreateUser, updateUser: UpdateUser, authorize: Authorize, findUser: GetUser, deleteUser: DeleteUser) {
+    constructor(listUsers: ListUsers, createUser: CreateUser, updateUser: UpdateUser, authorize: Authorize, findUser: GetUser, deleteUser: DeleteUser, userPasswordCheck: UserPasswordCheck) {
         this.listUsers = listUsers
         this.createUser = createUser
         this.updateUser = updateUser
         this.authorize = authorize
         this.findUser = findUser
         this.deleteUser = deleteUser
+        this.userPasswordCheck = userPasswordCheck
     }
 
 
@@ -68,13 +71,20 @@ export default class UserController {
         }
     }
 
-    public async update(token: string, id: number, payload: Partial<User>, password: string): Promise<Boolean> {
+    public async update(token: string, id: number, payload: Partial<User>, newPass: string, oldPass: string): Promise<Boolean> {
         try {
 
             if (!token) throw new Error("No token provided")
             const authorizedUser = await this.authorize.call(token)
             if (authorizedUser.id !== id) {
                 throw new Error("Unauthorized")
+            }
+
+            let password: string = undefined
+            if (newPass && oldPass) {
+                const isMatch = await this.userPasswordCheck.call(id, oldPass)
+                if (!isMatch) throw new Error("Old password is incorrect")
+                password = newPass
             }
 
             const updatedUser = await this.updateUser.call(id, payload, password)
