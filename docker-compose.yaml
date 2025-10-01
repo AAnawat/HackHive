@@ -45,7 +45,7 @@ services:
   problem:
     build:
       context: ./problems/
-      dockerfile: getting-start.dockerfile
+      dockerfile: dockerfile
     container_name: hackhive-problem
     ports:
       - "1234:1234"

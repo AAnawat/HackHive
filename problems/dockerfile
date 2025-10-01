@@ -1,0 +1,17 @@
+FROM aunanawat/hackhive-baseimage:v1
+
+WORKDIR /server
+
+ENV FLAG="example_flag"
+
+ARG SCRIPT=getting-start.sh
+
+COPY ./scripts/${SCRIPT} ./
+
+RUN chmod +x ${SCRIPT}
+
+ENV SCRIPT=${SCRIPT}
+
+RUN ls -la
+
+CMD [ "bash", "-c", "./$SCRIPT" ]
