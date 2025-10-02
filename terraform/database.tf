@@ -18,6 +18,6 @@ resource "aws_db_instance" "hackhive_db" {
   db_subnet_group_name = aws_db_subnet_group.rds_group.name
 
   vpc_security_group_ids = [
-    module.rds_sg.security_group_id
+    module.rds-sg.security_group_id
   ]
 }

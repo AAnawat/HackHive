@@ -22,6 +22,7 @@ module "s3_bucket" {
 
 resource "aws_s3_bucket_policy" "public_read" {
   bucket = module.s3_bucket.s3_bucket_id
+  depends_on = [ module.s3_bucket ]
 
   policy = jsonencode({
     Version = "2012-10-17"
