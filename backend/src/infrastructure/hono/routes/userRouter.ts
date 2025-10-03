@@ -2,19 +2,24 @@ import { Hono } from "hono";
 import UserController from "../../../controllers/userController";
 import ListUsers from "../../../use-cases/user/list";
 import serviceDAO from "../../../config/serviceDAO";
-import encryptor from "../../utils/encryptor/encryptor";
+import encryptor from "../../utils/encryptor";
 import createUserValidator from "../../validator/user/createUser";
 import CreateUser from "../../../use-cases/user/create";
 import UpdateUser from "../../../use-cases/user/update";
 import Authorize from "../../../use-cases/auth/authorize";
-import tokenManager from "../../utils/tokenManager/tokenManager";
+import tokenManager from "../../utils/tokenManager";
 import updateUserValidator from "../../validator/user/updateUser";
 import GetUser from "../../../use-cases/user/get";
 import DeleteUser from "../../../use-cases/user/delete";
 import UserPasswordCheck from "../../../use-cases/auth/userPasswordCheck";
+<<<<<<< HEAD
 import PictureManager from "../../utils/pictureManager/pictureManager";
 import s3Client from "../../s3";
 import GetLeaderboard from "../../../use-cases/user/leaderboard";
+=======
+import PictureManager from "../../utils/pictureManager";
+import s3Client from "../../aws/s3";
+>>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
 
 
 const router = new Hono({ strict: false })

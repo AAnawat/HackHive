@@ -10,17 +10,22 @@ import updateProblemValidator from "../../validator/problem/updateProblem";
 import DeleteProblem from "../../../use-cases/problem/delete";
 import AuthorizeAdmin from "../../../use-cases/auth/authorizeAdmin";
 import Authorize from "../../../use-cases/auth/authorize";
-import tokenManager from "../../utils/tokenManager/tokenManager";
+import tokenManager from "../../utils/tokenManager";
 import VoteProblem from "../../../use-cases/problem/vote";
+<<<<<<< HEAD
 import SubmitFlag from "../../../use-cases/problem/submitFlag";
+=======
+import GetCategories from "../../../use-cases/problem/getCatagories";
+>>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
 
 const router = new Hono({ strict: false });
 const controller = new ProblemController(
-    new GetAllProblems(serviceDAO.problem),
+    new GetAllProblems(serviceDAO.problem, serviceDAO.user),
     new GetProblem(serviceDAO.problem),
     new CreateProblem(serviceDAO.problem, createProblemValidator),
     new updateProblem(serviceDAO.problem, updateProblemValidator),
     new DeleteProblem(serviceDAO.problem),
+    new GetCategories(serviceDAO.problem),
     new VoteProblem(serviceDAO.solve),
     new AuthorizeAdmin(),
     new Authorize(tokenManager)
@@ -36,8 +41,19 @@ router.get("/", async (c) => {
         if (c.req.query("problem")) filter.problem = c.req.query("problem");
         if (c.req.query("difficulty")) filter.difficulty = c.req.query("difficulty");
         if (c.req.query("categories")) filter.categories = c.req.query("categories").split(",");
+        
+        let token: string;
+        if (c.req.query("user")) {
+            const userId = parseInt(c.req.query("user"));
+            if (isNaN(userId)) throw new Error("Invalid user ID in filter");
 
-        const problems = await controller.getAll(filter, page, perPage);
+            token = c.req.header("Authorization")?.split(" ")[1];
+            if (!token) throw new Error("Missing Authorization header");
+
+            filter.user = userId;
+        }
+
+        const problems = await controller.getAll(filter, page, perPage, token);
         return c.json(problems);
         
     } catch (error) {
@@ -158,6 +174,7 @@ router.post("/:id/vote", async (c) => {
     }
 });
 
+<<<<<<< HEAD
 router.post("/:id/submit", async (c) => {
     try {
         const problemId = parseInt(c.req.param("id"));
@@ -178,6 +195,13 @@ router.post("/:id/submit", async (c) => {
         const result = await submitFlagUseCase.call(user.id, problemId, body.flag);
 
         return c.json(result);
+=======
+router.get("/categories/list", async (c) => {
+    try {
+
+        const categories = await controller.categories();
+        return c.json(categories);
+>>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
         
     } catch (error) {
         if (error instanceof Error) {
@@ -185,6 +209,10 @@ router.post("/:id/submit", async (c) => {
         }
         return c.json({ error: "Unknown error" }, 500);
     }
+<<<<<<< HEAD
 });
+=======
+})
+>>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
 
 export default router;

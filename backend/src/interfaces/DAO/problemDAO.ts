@@ -6,10 +6,13 @@ export default interface IProblemDAO {
     create(payload: Problem): Promise<boolean>;
     update(id: number, payload: Partial<Problem>): Promise<boolean>;
     delete(id: number): Promise<boolean>;
+
+    getCatagories(): Promise<string[]>;
 }
 
 export interface IFindAllFilter {
     problem?: string;
     difficulty?: "Easy" | "Medium" | "Hard";
     categories?: string[];
+    user?: number;
 }

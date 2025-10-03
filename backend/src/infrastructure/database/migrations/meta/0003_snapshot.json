@@ -1,10 +1,6 @@
 {
-<<<<<<< HEAD
-  "id": "dc8b4529-1ca7-4209-b5be-7999ca638ef5",
-=======
-  "id": "78c11202-f39b-4b8e-9f49-3eb21ca54120",
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
-  "prevId": "53b8e6b7-2185-41b0-8a43-b504f799b6da",
+  "id": "3020c06d-0f28-4dd3-9aad-812bf39d9926",
+  "prevId": "78c11202-f39b-4b8e-9f49-3eb21ca54120",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -41,61 +37,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-<<<<<<< HEAD
-    "public.flags": {
-      "name": "flags",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigserial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "problem_id": {
-          "name": "problem_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "flag_value": {
-          "name": "flag_value",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_case_sensitive": {
-          "name": "is_case_sensitive",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "flags_problem_id_problems_id_fk": {
-          "name": "flags_problem_id_problems_id_fk",
-          "tableFrom": "flags",
-          "tableTo": "problems",
-          "columnsFrom": [
-            "problem_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-=======
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
     "public.hints": {
       "name": "hints",
       "schema": "",
@@ -176,8 +117,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 500
-<<<<<<< HEAD
-=======
         },
         "task_definition": {
           "name": "task_definition",
@@ -191,7 +130,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 60
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
         }
       },
       "indexes": {},
@@ -204,8 +142,6 @@
           "columns": [
             "problem"
           ]
-<<<<<<< HEAD
-=======
         },
         "problems_task_definition_unique": {
           "name": "problems_task_definition_unique",
@@ -213,7 +149,6 @@
           "columns": [
             "task_definition"
           ]
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
         }
       },
       "policies": {},
@@ -462,8 +397,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
-<<<<<<< HEAD
-=======
     },
     "public.sessions": {
       "name": "sessions",
@@ -560,7 +493,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
     }
   },
   "enums": {
@@ -572,8 +504,6 @@
         "Medium",
         "Hard"
       ]
-<<<<<<< HEAD
-=======
     },
     "public.status": {
       "name": "status",
@@ -584,7 +514,6 @@
         "Terminated",
         "Error"
       ]
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
     }
   },
   "schemas": {},
@@ -625,21 +554,22 @@
           "primaryKey": false,
           "notNull": true,
           "default": 500
-<<<<<<< HEAD
-        }
-      },
-      "definition": "select \"problems\".\"id\", \"problems\".\"problem\", \"problems\".\"description\", \"problems\".\"difficulty\", \"problems\".\"score\", COUNT(\"usersLikeProblems\".\"is_like\" = true OR NULL)::float / NULLIF(COUNT(\"usersLikeProblems\".\"id\"), 0) * 100 as \"likes\" from \"problems\" left join \"solvedRecords\" on \"problems\".\"id\" = \"solvedRecords\".\"problem_id\" left join \"usersLikeProblems\" on \"solvedRecords\".\"id\" = \"usersLikeProblems\".\"solve_id\" group by \"problems\".\"id\"",
-=======
         },
         "task_definition": {
           "name": "task_definition",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 60
         }
       },
-      "definition": "select \"problems\".\"id\", \"problems\".\"problem\", \"problems\".\"description\", \"problems\".\"difficulty\", \"problems\".\"score\", \"problems\".\"task_definition\", COUNT(\"usersLikeProblems\".\"is_like\" = true OR NULL)::float / NULLIF(COUNT(\"usersLikeProblems\".\"id\"), 0) * 100 as \"likes\" from \"problems\" left join \"solvedRecords\" on \"problems\".\"id\" = \"solvedRecords\".\"problem_id\" left join \"usersLikeProblems\" on \"solvedRecords\".\"id\" = \"usersLikeProblems\".\"solve_id\" group by \"problems\".\"id\"",
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
+      "definition": "select \"problems\".\"id\", \"problems\".\"problem\", \"problems\".\"description\", \"problems\".\"difficulty\", \"problems\".\"score\", \"problems\".\"task_definition\", \"problems\".\"duration_minutes\", COUNT(\"usersLikeProblems\".\"is_like\" = true OR NULL)::float / NULLIF(COUNT(\"usersLikeProblems\".\"id\"), 0) * 100 as \"likes\" from \"problems\" left join \"solvedRecords\" on \"problems\".\"id\" = \"solvedRecords\".\"problem_id\" left join \"usersLikeProblems\" on \"solvedRecords\".\"id\" = \"usersLikeProblems\".\"solve_id\" group by \"problems\".\"id\"",
       "name": "problemsWithLikes",
       "schema": "public",
       "isExisting": false,
