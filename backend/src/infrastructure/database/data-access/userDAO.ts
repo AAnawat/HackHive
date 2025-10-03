@@ -2,7 +2,8 @@ import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from '../schema'
 import User from "../../../entities/user";
 import type IUserDAO from "../../../interfaces/DAO/userDAO";
-import { and, eq, sql } from "drizzle-orm";
+import type { LeaderboardEntry } from "../../../interfaces/DAO/userDAO";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { usersTable, solvedRecordsTable } from "../schema";
 
 export default class UserDAO implements IUserDAO {
@@ -127,5 +128,22 @@ export default class UserDAO implements IUserDAO {
             .limit(1)
 
         return findResult[0]
+    }
+
+    public async getLeaderboard(limit: number): Promise<LeaderboardEntry[]> {
+        const leaderboard = await this.connection
+            .select({
+                id: usersTable.id,
+                username: usersTable.username,
+                totalScore: sql<number>`COALESCE(SUM(${solvedRecordsTable.solve_score}), 0)`.as('totalScore'),
+                problemsSolved: sql<number>`COUNT(${solvedRecordsTable.id})`.as('problemsSolved')
+            })
+            .from(usersTable)
+            .leftJoin(solvedRecordsTable, eq(usersTable.id, solvedRecordsTable.user_id))
+            .groupBy(usersTable.id)
+            .orderBy(desc(sql`totalScore`))
+            .limit(limit);
+
+        return leaderboard;
     }
 }

@@ -9,8 +9,15 @@ import './index.css'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 
+import { AuthProvider } from './context/AuthContext';
 import HomePage from './pages/homePage';
 import XtermPage from './pages/xtermPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ProblemsPage from './pages/ProblemsPage';
+import ProblemDetailPage from './pages/ProblemDetailPage';
+import ProfilePage from './pages/ProfilePage';
+import AdminProblemFormPage from './pages/AdminProblemFormPage';
 
 
 // React router system
@@ -18,6 +25,34 @@ const router = createBrowserRouter([
   {
     path: "/",
     Component: HomePage
+  },
+  {
+    path: "/login",
+    Component: LoginPage
+  },
+  {
+    path: "/register",
+    Component: RegisterPage
+  },
+  {
+    path: "/problems",
+    Component: ProblemsPage
+  },
+  {
+    path: "/problems/:id",
+    Component: ProblemDetailPage
+  },
+  {
+    path: "/profile",
+    Component: ProfilePage
+  },
+  {
+    path: "/profile/:id",
+    Component: ProfilePage
+  },
+  {
+    path: "/admin/problems",
+    Component: AdminProblemFormPage
   },
   {
     path: "/xterm",
@@ -54,7 +89,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider defaultColorScheme='dark' theme={theme}>
       <Notifications />
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </MantineProvider>
   </StrictMode>,
 )

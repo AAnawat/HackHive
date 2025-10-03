@@ -48,3 +48,5 @@ terraform/value/*
 
 # build directory
 *dist/
+
+/md

@@ -1,4 +1,5 @@
 export * from "./categories"
+export * from "./flags"
 export * from "./hints"
 export * from "./problems"
 export * from "./problemsToCategories"

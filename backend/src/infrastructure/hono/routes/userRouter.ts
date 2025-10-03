@@ -14,6 +14,7 @@ import DeleteUser from "../../../use-cases/user/delete";
 import UserPasswordCheck from "../../../use-cases/auth/userPasswordCheck";
 import PictureManager from "../../utils/pictureManager/pictureManager";
 import s3Client from "../../s3";
+import GetLeaderboard from "../../../use-cases/user/leaderboard";
 
 
 const router = new Hono({ strict: false })
@@ -140,5 +141,18 @@ router.delete('/:id', async (c) => {
     }
 })
 
+router.get('/leaderboard', async (c) => {
+    try {
+        const limit = c.req.query('limit') ? parseInt(c.req.query('limit')) : 50
+        const getLeaderboard = new GetLeaderboard(serviceDAO.user)
+        const leaderboard = await getLeaderboard.call(limit)
+        return c.json(leaderboard, 200)
+    } catch (error) {
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400)
+        }
+        return c.json({ error: "Unknown error" }, 500)
+    }
+})
 
 export default router

@@ -70,5 +70,22 @@ export default class SolveDAO implements ISolveDAO {
 
         return voteResult;
     }
+
+    public async findByUserAndProblem(userId: number, problemId: number): Promise<{ id: number; solve_score: number } | undefined> {
+        const result = await this.connection.select({
+            id: solvedRecordsTable.id,
+            solve_score: solvedRecordsTable.solve_score
+        })
+        .from(solvedRecordsTable)
+        .where(and(eq(solvedRecordsTable.user_id, userId), eq(solvedRecordsTable.problem_id, problemId)))
+        .limit(1);
+
+        return result[0];
+    }
+
+    public async create(data: { user_id: number; problem_id: number; solve_score: number }): Promise<boolean> {
+        await this.connection.insert(solvedRecordsTable).values(data);
+        return true;
+    }
     
 }

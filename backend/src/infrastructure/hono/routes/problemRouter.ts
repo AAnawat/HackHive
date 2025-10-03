@@ -12,6 +12,7 @@ import AuthorizeAdmin from "../../../use-cases/auth/authorizeAdmin";
 import Authorize from "../../../use-cases/auth/authorize";
 import tokenManager from "../../utils/tokenManager/tokenManager";
 import VoteProblem from "../../../use-cases/problem/vote";
+import SubmitFlag from "../../../use-cases/problem/submitFlag";
 
 const router = new Hono({ strict: false });
 const controller = new ProblemController(
@@ -148,6 +149,35 @@ router.post("/:id/vote", async (c) => {
         const voteResult = await controller.vote(token, problemId, isLiked);
         if (voteResult) return c.json({ message: "Vote recorded successfully" });
         else throw new Error("Vote not recorded");
+        
+    } catch (error) {
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400);
+        }
+        return c.json({ error: "Unknown error" }, 500);
+    }
+});
+
+router.post("/:id/submit", async (c) => {
+    try {
+        const problemId = parseInt(c.req.param("id"));
+        if (isNaN(problemId)) throw new Error("Invalid problem ID");
+
+        let token = c.req.header("Authorization");
+        if (!token) throw new Error("Missing Authorization header");
+        else token = token.split(" ")[1] as string;
+
+        const authorize = new Authorize(tokenManager);
+        const user = await authorize.call(token);
+        if (!user) throw new Error("Unauthorized");
+
+        const body = await c.req.json();
+        if (!body.flag) throw new Error("Missing flag field");
+
+        const submitFlagUseCase = new SubmitFlag(serviceDAO.flag, serviceDAO.solve, serviceDAO.problem);
+        const result = await submitFlagUseCase.call(user.id, problemId, body.flag);
+
+        return c.json(result);
         
     } catch (error) {
         if (error instanceof Error) {
