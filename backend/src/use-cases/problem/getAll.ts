@@ -14,10 +14,8 @@ export default class GetAllProblems {
 
     public async call(filter: IFindAllFilter, page: number, perPage: number) {
         let problems = await this.problemDAO.findAll(filter, page, perPage);
-        console.log(filter);
         
         if (filter.user) {
-            console.log("Fetching done problems for user:", filter.user);
             const DoneProblems = await this.userDAO.findDoneProblems(filter.user);
 
             problems = problems.map(problem => {

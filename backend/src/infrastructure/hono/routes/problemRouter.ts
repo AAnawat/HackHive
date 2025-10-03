@@ -173,7 +173,6 @@ router.post("/:id/vote", async (c) => {
 router.get("/categories/list", async (c) => {
     try {
 
-        console.log("Fetching categories");
         const categories = await controller.categories();
         return c.json(categories);
         
