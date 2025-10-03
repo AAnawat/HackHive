@@ -1,7 +1,5 @@
-import type IPictureManager from "../../../interfaces/pictureManager";
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import s3Config from "../../../config/s3Config";
+import type IPictureManager from "../../interfaces/pictureManager";
+import s3Config from "../../config/s3Config";
 import { 
     PutObjectCommand,
     DeleteObjectCommand,

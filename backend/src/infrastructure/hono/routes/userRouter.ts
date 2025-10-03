@@ -2,18 +2,18 @@ import { Hono } from "hono";
 import UserController from "../../../controllers/userController";
 import ListUsers from "../../../use-cases/user/list";
 import serviceDAO from "../../../config/serviceDAO";
-import encryptor from "../../utils/encryptor/encryptor";
+import encryptor from "../../utils/encryptor";
 import createUserValidator from "../../validator/user/createUser";
 import CreateUser from "../../../use-cases/user/create";
 import UpdateUser from "../../../use-cases/user/update";
 import Authorize from "../../../use-cases/auth/authorize";
-import tokenManager from "../../utils/tokenManager/tokenManager";
+import tokenManager from "../../utils/tokenManager";
 import updateUserValidator from "../../validator/user/updateUser";
 import GetUser from "../../../use-cases/user/get";
 import DeleteUser from "../../../use-cases/user/delete";
 import UserPasswordCheck from "../../../use-cases/auth/userPasswordCheck";
-import PictureManager from "../../utils/pictureManager/pictureManager";
-import s3Client from "../../s3";
+import PictureManager from "../../utils/pictureManager";
+import s3Client from "../../aws/s3";
 
 
 const router = new Hono({ strict: false })

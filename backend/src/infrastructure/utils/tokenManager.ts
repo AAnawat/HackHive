@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
-import type ITokenManager from "../../../interfaces/tokenManager"
-import type User from "../../../entities/user";
-import secrets from "../../../config/secrets";
+import type ITokenManager from "../../interfaces/tokenManager"
+import type User from "../../entities/user";
+import secrets from '../../config/secrets';
 
 
 class TokenManager implements ITokenManager {

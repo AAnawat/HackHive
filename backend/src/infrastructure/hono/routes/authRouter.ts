@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import AuthController from "../../../controllers/authController";
 import Login from "../../../use-cases/auth/login";
 import serviceDAO from "../../../config/serviceDAO";
-import encryptor from "../../utils/encryptor/encryptor";
-import tokenManager from "../../utils/tokenManager/tokenManager";
+import encryptor from "../../utils/encryptor";
+import tokenManager from "../../utils/tokenManager";
 
 
 const router = new Hono({ strict: false });
