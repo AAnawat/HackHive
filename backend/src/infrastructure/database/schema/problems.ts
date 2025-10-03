@@ -4,6 +4,7 @@ import { hintsTable } from "./hints";
 import { problemsToCategoriesTable } from "./problemsToCategories";
 import { solvedRecordsTable } from "./solvedRecords";
 import { usersLikeProblemsTable } from "./usersLikeProblems";
+import { sessionsTable } from "./sessions";
 
 export const difficultyEnum = pgEnum("difficulty", ["Easy", "Medium", "Hard"])
 
@@ -13,12 +14,15 @@ export const problemsTable = pgTable('problems', {
     description: text(),
     difficulty: difficultyEnum().notNull(),
     score: integer().notNull().default(500),
+    task_definition: varchar({length: 255}).notNull().unique(),
+    duration_minutes: integer().notNull().default(60),
 })
 
 export const problemsRelations = relations(problemsTable, ({many}) => ({
     hintsTable: many(hintsTable),
     problemsToCategoriesTable: many(problemsToCategoriesTable),
-    solvedRecordsTable: many(solvedRecordsTable)
+    solvedRecordsTable: many(solvedRecordsTable),
+    sessionsTable: many(sessionsTable)
 }))
 
 export const problemsWithLikesView = pgView('problemsWithLikes').as((qb) => {
@@ -28,6 +32,8 @@ export const problemsWithLikesView = pgView('problemsWithLikes').as((qb) => {
         description: problemsTable.description,
         difficulty: problemsTable.difficulty,
         score: problemsTable.score,
+        task_definition: problemsTable.task_definition,
+        duration_minutes: problemsTable.duration_minutes,
         likes: sql`COUNT(${usersLikeProblemsTable.is_like} = true OR NULL)::float / NULLIF(COUNT(${usersLikeProblemsTable.id}), 0) * 100`.as("likes")
     })
     .from(problemsTable)

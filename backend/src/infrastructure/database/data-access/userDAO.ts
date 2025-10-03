@@ -128,4 +128,14 @@ export default class UserDAO implements IUserDAO {
 
         return findResult[0]
     }
+
+    public async findDoneProblems(userId: number): Promise<number[]> {
+        const findResult = await this.connection
+            .select({
+                problem_id: solvedRecordsTable.problem_id
+            })
+            .from(solvedRecordsTable)
+            .where(eq(solvedRecordsTable.user_id, userId))
+        return findResult.map(record => record.problem_id);
+    }
 }

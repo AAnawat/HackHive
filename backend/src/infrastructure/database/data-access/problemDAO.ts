@@ -44,6 +44,8 @@ export default class ProblemDAO implements IProblemDAO {
                 description: problemsWithLikesView.description,
                 difficulty: problemsWithLikesView.difficulty,
                 score: problemsWithLikesView.score,
+                task_definition: problemsWithLikesView.task_definition,
+                duration_minutes: problemsWithLikesView.duration_minutes,
                 likes: problemsWithLikesView.likes,
                 hints: sql<string[]>`ARRAY_AGG(DISTINCT ${hintsTable.hint})`.as("hints"),
                 categories: sql<string[]>`ARRAY_AGG(DISTINCT ${categoriesTable.category})`.as("categories"),
@@ -56,7 +58,16 @@ export default class ProblemDAO implements IProblemDAO {
             .limit(perPage)
             .offset((page - 1) * perPage)
             .orderBy(problemsWithLikesView.id)
-            .groupBy(problemsWithLikesView.id, problemsWithLikesView.problem, problemsWithLikesView.description, problemsWithLikesView.difficulty, problemsWithLikesView.score, problemsWithLikesView.likes);
+            .groupBy(
+                problemsWithLikesView.id,
+                problemsWithLikesView.problem,
+                problemsWithLikesView.description,
+                problemsWithLikesView.difficulty,
+                problemsWithLikesView.score,
+                problemsWithLikesView.likes,
+                problemsWithLikesView.task_definition,
+                problemsWithLikesView.duration_minutes
+            );
 
         return findResult;
     }
@@ -69,6 +80,8 @@ export default class ProblemDAO implements IProblemDAO {
                 description: problemsWithLikesView.description,
                 difficulty: problemsWithLikesView.difficulty,
                 score: problemsWithLikesView.score,
+                task_definition: problemsWithLikesView.task_definition,
+                duration_minutes: problemsWithLikesView.duration_minutes,
                 likes: problemsWithLikesView.likes,
                 hints: sql<string[]>`ARRAY_AGG(DISTINCT ${hintsTable.hint})`.as("hints"),
                 categories: sql<string[]>`ARRAY_AGG(DISTINCT ${categoriesTable.category})`.as("categories"),
@@ -93,7 +106,10 @@ export default class ProblemDAO implements IProblemDAO {
             const insertedProblem = (await tx.insert(problemsTable).values({
                 problem: payload.problem,
                 description: payload.description,
-                difficulty: payload.difficulty
+                difficulty: payload.difficulty,
+                task_definition: payload.task_definition,
+                duration_minutes: payload.duration_minutes,
+                score: payload.score
             }).returning())[0];
 
             if (payload.hints && payload.hints.length > 0) {
@@ -184,6 +200,9 @@ export default class ProblemDAO implements IProblemDAO {
             if (payload.problem) fieldsToUpdate.problem = payload.problem;
             if (payload.description) fieldsToUpdate.description = payload.description;
             if (payload.difficulty) fieldsToUpdate.difficulty = payload.difficulty;
+            if (payload.task_definition) fieldsToUpdate.task_definition = payload.task_definition;
+            if (payload.duration_minutes) fieldsToUpdate.duration_minutes = payload.duration_minutes;
+            if (payload.score) fieldsToUpdate.score = payload.score;
             if (Object.keys(fieldsToUpdate).length > 0) {
                 await tx.update(problemsTable).set(fieldsToUpdate).where(eq(problemsTable.id, id));
             }
@@ -216,5 +235,10 @@ export default class ProblemDAO implements IProblemDAO {
         });
 
         return deleteResult;
+    }
+
+    public async getCatagories(): Promise<string[]> {
+        const categories = await this.connection.select({ category: categoriesTable.category }).from(categoriesTable).orderBy(categoriesTable.category);
+        return categories.map((cat) => cat.category);
     }
 }

@@ -6,6 +6,7 @@ import type CreateProblem from "../use-cases/problem/create";
 import type DeleteProblem from "../use-cases/problem/delete";
 import type GetProblem from "../use-cases/problem/get";
 import type GetAllProblems from "../use-cases/problem/getAll";
+import type GetCategories from "../use-cases/problem/getCatagories";
 import type updateProblem from "../use-cases/problem/update";
 import type VoteProblem from "../use-cases/problem/vote";
 
@@ -15,6 +16,7 @@ export default class ProblemController {
     private createProblem: CreateProblem;
     private updateProblem: updateProblem;
     private deleteProblem: DeleteProblem;
+    private getCategories: GetCategories;
     private voteProblem: VoteProblem;
     private authorizeAdmin: AuthorizeAdmin;
     private authorize: Authorize;
@@ -25,6 +27,7 @@ export default class ProblemController {
         createProblem: CreateProblem,
         updateProblem: updateProblem,
         deleteProblem: DeleteProblem,
+        getCategories: GetCategories,
         voteProblem: VoteProblem,
         authorizeAdmin: AuthorizeAdmin,
         authorize: Authorize
@@ -34,20 +37,28 @@ export default class ProblemController {
         this.createProblem = createProblem;
         this.updateProblem = updateProblem;
         this.deleteProblem = deleteProblem;
+        this.getCategories = getCategories;
         this.voteProblem = voteProblem;
         this.authorizeAdmin = authorizeAdmin;
         this.authorize = authorize;
     }
 
 
-    public async getAll(filter: IFindAllFilter, page: number, perPage: number) {
+    public async getAll(filter: IFindAllFilter, page: number, perPage: number, token?: string) {
         try {
+
+            if (filter.user) {
+                if (!token) throw new Error("Missing Authorization token");
+
+                const user = await this.authorize.call(token);
+                if (!user) throw new Error("Unauthorized");
+                if (user.id !== filter.user) throw new Error("Forbidden");
+            }
 
             const problems = await this.getAllProblems.call(filter, page, perPage);
             return problems;
 
         } catch (error) {
-            console.log(error);
             if (error instanceof Error) {
                 const errorMessage = error.message.toString();
                 if (errorMessage.includes("Failed query")) throw new Error("Invalid filter");
@@ -126,6 +137,19 @@ export default class ProblemController {
 
             return await this.voteProblem.call(user.id, problemId, isLiked);
             
+        } catch (error) {
+            if (error instanceof Error) {
+                throw new Error(error.message);
+            }
+        }
+    }
+
+    public async categories() {
+        try {
+
+            const categories = await this.getCategories.call();
+            return categories;
+
         } catch (error) {
             if (error instanceof Error) {
                 throw new Error(error.message);

@@ -60,61 +60,81 @@ async function main() {
         problem: 'SQL Injection Basics',
         description: 'Find the flag by exploiting SQL injection vulnerability',
         difficulty: 'Easy',
-        score: 100
+        score: 100,
+        task_definition: "test1",
+        duration_minutes: 60
       },
       {
         problem: 'XSS Challenge',
         description: 'Execute XSS to retrieve admin cookies',
         difficulty: 'Easy',
-        score: 150
+        score: 150,
+        task_definition: "test2",
+        duration_minutes: 60
       },
       {
         problem: 'Caesar Cipher',
         description: 'Decode the message using Caesar cipher',
         difficulty: 'Medium',
-        score: 200
+        score: 200,
+        task_definition: "test3",
+        duration_minutes: 60
       },
       {
         problem: 'RSA Decryption',
         description: 'Break the RSA encryption to get the flag',
         difficulty: 'Hard',
-        score: 400
+        score: 400,
+        task_definition: "test4",
+        duration_minutes: 60
       },
       {
         problem: 'Buffer Overflow',
         description: 'Exploit buffer overflow to gain shell access',
         difficulty: 'Hard',
-        score: 500
+        score: 500,
+        task_definition: "test5",
+        duration_minutes: 60
       },
       {
         problem: 'Memory Corruption',
         description: 'Find memory corruption bugs in the binary',
         difficulty: 'Medium',
-        score: 300
+        score: 300,
+        task_definition: "test6",
+        duration_minutes: 60
       },
       {
         problem: 'Hidden Flag',
         description: 'The flag is hidden somewhere in this file',
         difficulty: 'Easy',
-        score: 100
+        score: 100,
+        task_definition: "test7",
+        duration_minutes: 60
       },
       {
         problem: 'Network Analysis',
         description: 'Analyze network traffic to find credentials',
         difficulty: 'Medium',
-        score: 250
+        score: 250,
+        task_definition: "test8",
+        duration_minutes: 60
       },
       {
         problem: 'Password Cracking',
         description: 'Crack the password hash to reveal the flag',
         difficulty: 'Hard',
-        score: 450
+        score: 450,
+        task_definition: "test9",
+        duration_minutes: 60
       },
       {
         problem: 'Steganography',
         description: 'Extract hidden data from the image file',
         difficulty: 'Medium',
-        score: 300
+        score: 300,
+        task_definition: "test10",
+        duration_minutes: 60
       }
     ]);
 
