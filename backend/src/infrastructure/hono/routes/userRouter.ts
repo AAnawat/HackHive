@@ -12,14 +12,9 @@ import updateUserValidator from "../../validator/user/updateUser";
 import GetUser from "../../../use-cases/user/get";
 import DeleteUser from "../../../use-cases/user/delete";
 import UserPasswordCheck from "../../../use-cases/auth/userPasswordCheck";
-<<<<<<< HEAD
-import PictureManager from "../../utils/pictureManager/pictureManager";
-import s3Client from "../../s3";
 import GetLeaderboard from "../../../use-cases/user/leaderboard";
-=======
 import PictureManager from "../../utils/pictureManager";
 import s3Client from "../../aws/s3";
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
 
 
 const router = new Hono({ strict: false })
