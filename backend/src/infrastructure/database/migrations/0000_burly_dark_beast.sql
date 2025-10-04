@@ -1,8 +1,16 @@
 CREATE TYPE "public"."difficulty" AS ENUM('Easy', 'Medium', 'Hard');--> statement-breakpoint
+CREATE TYPE "public"."status" AS ENUM('Running', 'Pending', 'Terminated', 'Error');--> statement-breakpoint
 CREATE TABLE "categories" (
 	"id" bigserial PRIMARY KEY NOT NULL,
 	"category" varchar(255) NOT NULL,
 	CONSTRAINT "categories_category_unique" UNIQUE("category")
+);
+--> statement-breakpoint
+CREATE TABLE "flags" (
+	"id" bigserial PRIMARY KEY NOT NULL,
+	"problem_id" bigint NOT NULL,
+	"flag_value" varchar(255) NOT NULL,
+	"is_case_sensitive" boolean DEFAULT true NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "hints" (
@@ -17,7 +25,10 @@ CREATE TABLE "problems" (
 	"description" text,
 	"difficulty" "difficulty" NOT NULL,
 	"score" integer DEFAULT 500 NOT NULL,
-	CONSTRAINT "problems_problem_unique" UNIQUE("problem")
+	"task_definition" varchar(255) NOT NULL,
+	"duration_minutes" integer DEFAULT 60 NOT NULL,
+	CONSTRAINT "problems_problem_unique" UNIQUE("problem"),
+	CONSTRAINT "problems_task_definition_unique" UNIQUE("task_definition")
 );
 --> statement-breakpoint
 CREATE TABLE "problemsToCategories" (
@@ -38,7 +49,7 @@ CREATE TABLE "users" (
 	"username" varchar(255) NOT NULL,
 	"gmail" varchar(255) NOT NULL,
 	"password" varchar(255) NOT NULL,
-	"pfp_path" varchar(255) DEFAULT '/PFP/default.png' NOT NULL,
+	"pfp_path" varchar(255) DEFAULT 'https://hackhive.s3.us-east-1.amazonaws.com/profile-pictures/default.png' NOT NULL,
 	CONSTRAINT "users_gmail_unique" UNIQUE("gmail")
 );
 --> statement-breakpoint
@@ -48,11 +59,26 @@ CREATE TABLE "usersLikeProblems" (
 	"is_like" boolean NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "sessions" (
+	"id" bigserial PRIMARY KEY NOT NULL,
+	"user_id" bigint NOT NULL,
+	"problem_id" bigint NOT NULL,
+	"flag" varchar(255) NOT NULL,
+	"status" "status" DEFAULT 'Pending' NOT NULL,
+	"task_arn" varchar(255),
+	"ip_address" varchar(255),
+	"started_at" timestamp with time zone,
+	"ended_at" timestamp with time zone
+);
+--> statement-breakpoint
+ALTER TABLE "flags" ADD CONSTRAINT "flags_problem_id_problems_id_fk" FOREIGN KEY ("problem_id") REFERENCES "public"."problems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "hints" ADD CONSTRAINT "hints_problem_id_problems_id_fk" FOREIGN KEY ("problem_id") REFERENCES "public"."problems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "problemsToCategories" ADD CONSTRAINT "problemsToCategories_problem_id_problems_id_fk" FOREIGN KEY ("problem_id") REFERENCES "public"."problems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "problemsToCategories" ADD CONSTRAINT "problemsToCategories_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "solvedRecords" ADD CONSTRAINT "solvedRecords_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "solvedRecords" ADD CONSTRAINT "solvedRecords_problem_id_problems_id_fk" FOREIGN KEY ("problem_id") REFERENCES "public"."problems"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "usersLikeProblems" ADD CONSTRAINT "usersLikeProblems_solve_id_solvedRecords_id_fk" FOREIGN KEY ("solve_id") REFERENCES "public"."solvedRecords"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_problem_id_problems_id_fk" FOREIGN KEY ("problem_id") REFERENCES "public"."problems"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "solved_user_problem_idx" ON "solvedRecords" USING btree ("user_id","problem_id");--> statement-breakpoint
-CREATE VIEW "public"."problemsWithLikes" AS (select "problems"."id", "problems"."problem", "problems"."description", "problems"."difficulty", "problems"."score", COUNT("usersLikeProblems"."is_like" = true OR NULL)::float / NULLIF(COUNT("usersLikeProblems"."id"), 0) * 100 as "likes" from "problems" left join "solvedRecords" on "problems"."id" = "solvedRecords"."problem_id" left join "usersLikeProblems" on "solvedRecords"."id" = "usersLikeProblems"."solve_id" group by "problems"."id");
+CREATE VIEW "public"."problemsWithLikes" AS (select "problems"."id", "problems"."problem", "problems"."description", "problems"."difficulty", "problems"."score", "problems"."task_definition", "problems"."duration_minutes", COUNT("usersLikeProblems"."is_like" = true OR NULL)::float / NULLIF(COUNT("usersLikeProblems"."id"), 0) * 100 as "likes" from "problems" left join "solvedRecords" on "problems"."id" = "solvedRecords"."problem_id" left join "usersLikeProblems" on "solvedRecords"."id" = "usersLikeProblems"."solve_id" group by "problems"."id");

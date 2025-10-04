@@ -130,7 +130,6 @@ export default class UserDAO implements IUserDAO {
         return findResult[0]
     }
 
-<<<<<<< HEAD
     public async getLeaderboard(limit: number): Promise<LeaderboardEntry[]> {
         const leaderboard = await this.connection
             .select({
@@ -146,7 +145,8 @@ export default class UserDAO implements IUserDAO {
             .limit(limit);
 
         return leaderboard;
-=======
+    }
+
     public async findDoneProblems(userId: number): Promise<number[]> {
         const findResult = await this.connection
             .select({
@@ -155,6 +155,5 @@ export default class UserDAO implements IUserDAO {
             .from(solvedRecordsTable)
             .where(eq(solvedRecordsTable.user_id, userId))
         return findResult.map(record => record.problem_id);
->>>>>>> 21aded95e0bf7deb4944f02d833e6f28b05c9216
     }
 }

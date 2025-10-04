@@ -52,7 +52,6 @@ services:
     networks:
       - hackhive-network
 
-
 networks:
   hackhive-network:
 

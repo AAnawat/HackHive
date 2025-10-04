@@ -1,5 +1,5 @@
 {
-  "id": "d86475b9-7913-4227-a703-6385622bf720",
+  "id": "bf2f5a43-cecd-4431-9f95-147665f38549",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -33,6 +33,58 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.flags": {
+      "name": "flags",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "problem_id": {
+          "name": "problem_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "flag_value": {
+          "name": "flag_value",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_case_sensitive": {
+          "name": "is_case_sensitive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "flags_problem_id_problems_id_fk": {
+          "name": "flags_problem_id_problems_id_fk",
+          "tableFrom": "flags",
+          "tableTo": "problems",
+          "columnsFrom": [
+            "problem_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -117,6 +169,19 @@
           "primaryKey": false,
           "notNull": true,
           "default": 500
+        },
+        "task_definition": {
+          "name": "task_definition",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 60
         }
       },
       "indexes": {},
@@ -128,6 +193,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "problem"
+          ]
+        },
+        "problems_task_definition_unique": {
+          "name": "problems_task_definition_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "task_definition"
           ]
         }
       },
@@ -314,7 +386,7 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true,
-          "default": "'/PFP/default.png'"
+          "default": "'https://hackhive.s3.us-east-1.amazonaws.com/profile-pictures/default.png'"
         }
       },
       "indexes": {},
@@ -377,6 +449,102 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "problem_id": {
+          "name": "problem_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "flag": {
+          "name": "flag",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Pending'"
+        },
+        "task_arn": {
+          "name": "task_arn",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sessions_user_id_users_id_fk": {
+          "name": "sessions_user_id_users_id_fk",
+          "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sessions_problem_id_problems_id_fk": {
+          "name": "sessions_problem_id_problems_id_fk",
+          "tableFrom": "sessions",
+          "tableTo": "problems",
+          "columnsFrom": [
+            "problem_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -387,6 +555,16 @@
         "Easy",
         "Medium",
         "Hard"
+      ]
+    },
+    "public.status": {
+      "name": "status",
+      "schema": "public",
+      "values": [
+        "Running",
+        "Pending",
+        "Terminated",
+        "Error"
       ]
     }
   },
@@ -428,9 +606,22 @@
           "primaryKey": false,
           "notNull": true,
           "default": 500
+        },
+        "task_definition": {
+          "name": "task_definition",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 60
         }
       },
-      "definition": "select \"problems\".\"id\", \"problems\".\"problem\", \"problems\".\"description\", \"problems\".\"difficulty\", \"problems\".\"score\", COUNT(\"usersLikeProblems\".\"is_like\" = true OR NULL)::float / NULLIF(COUNT(\"usersLikeProblems\".\"id\"), 0) * 100 as \"likes\" from \"problems\" left join \"solvedRecords\" on \"problems\".\"id\" = \"solvedRecords\".\"problem_id\" left join \"usersLikeProblems\" on \"solvedRecords\".\"id\" = \"usersLikeProblems\".\"solve_id\" group by \"problems\".\"id\"",
+      "definition": "select \"problems\".\"id\", \"problems\".\"problem\", \"problems\".\"description\", \"problems\".\"difficulty\", \"problems\".\"score\", \"problems\".\"task_definition\", \"problems\".\"duration_minutes\", COUNT(\"usersLikeProblems\".\"is_like\" = true OR NULL)::float / NULLIF(COUNT(\"usersLikeProblems\".\"id\"), 0) * 100 as \"likes\" from \"problems\" left join \"solvedRecords\" on \"problems\".\"id\" = \"solvedRecords\".\"problem_id\" left join \"usersLikeProblems\" on \"solvedRecords\".\"id\" = \"usersLikeProblems\".\"solve_id\" group by \"problems\".\"id\"",
       "name": "problemsWithLikes",
       "schema": "public",
       "isExisting": false,
