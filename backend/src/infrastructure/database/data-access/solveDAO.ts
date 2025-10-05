@@ -16,7 +16,7 @@ export default class SolveDAO implements ISolveDAO {
     }
 
 
-    public async solvedProblem(userId: number, problemId: number): Promise<boolean> {
+    public async solvedProblem(userId: number, problemId: number): Promise<number> {
         const insertResult = await this.connection.transaction(async (tx) => {
             const problemResult = await tx.select()
                 .from(problemsTable)
@@ -24,18 +24,19 @@ export default class SolveDAO implements ISolveDAO {
             if (problemResult.length <= 0) throw new Error("Problem not found");
             else { var currentScore = problemResult[0].score; }
 
-            await tx.insert(solvedRecordsTable)
+            const insertValue = await tx.insert(solvedRecordsTable)
                 .values({
                     user_id: userId,
                     problem_id: problemId,
                     solve_score: currentScore
-                });
+                })
+                .returning();
 
             await tx.update(problemsTable)
                 .set({score: currentScore - 1})
                 .where(eq(problemsTable.id, problemId));
 
-            return true;
+            return insertValue[0].solve_score;
         })
 
         return insertResult;
@@ -46,7 +47,7 @@ export default class SolveDAO implements ISolveDAO {
             const solveResult = await tx.select({ id: solvedRecordsTable.id })
                 .from(solvedRecordsTable)
                 .where(and(eq(solvedRecordsTable.user_id, userId), eq(solvedRecordsTable.problem_id, problemId)));
-            if (solveResult.length < 0) throw new Error("Solve problem first before voting");
+            if (solveResult.length <= 0) throw new Error("Solve problem first before voting");
             else { var solveID = solveResult[0].id; }
             
             const existingVote = await tx.select()
@@ -69,5 +70,17 @@ export default class SolveDAO implements ISolveDAO {
         })
 
         return voteResult;
+    }
+
+    public async checkSolveExists(userId: number, problemId: number): Promise<boolean> {
+        const checkResult = await this.connection
+            .select()
+            .from(solvedRecordsTable)
+            .where(and(
+                eq(solvedRecordsTable.user_id, userId),
+                eq(solvedRecordsTable.problem_id, problemId)
+            ));
+        
+        return checkResult.length > 0;
     }
 }

@@ -60,7 +60,7 @@ export default class ProblemController {
 
         } catch (error) {
             if (error instanceof Error) {
-                const errorMessage = error.message.toString();
+                const errorMessage = error.cause?.toString() || "";
                 if (errorMessage.includes("Failed query")) throw new Error("Invalid filter");
                 else throw new Error(error.message);
             }
@@ -90,7 +90,7 @@ export default class ProblemController {
 
         } catch (error) {
             if (error instanceof Error) {
-                const errorMessage = error.cause.toString();
+                const errorMessage = error.cause?.toString() || "";
                 if (errorMessage.includes("duplicate key value")) throw new Error("Problem already exists");
                 throw new Error(error.message);
             }
@@ -107,7 +107,7 @@ export default class ProblemController {
             
         } catch (error) {
             if (error instanceof Error) {
-                const errorMessage = error.cause.toString();
+                const errorMessage = error.cause?.toString() || "";
                 if (errorMessage.includes("duplicate key value")) throw new Error("Can't change name to an existing problem");
                 throw new Error(error.message);
             }

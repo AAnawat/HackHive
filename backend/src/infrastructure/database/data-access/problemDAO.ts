@@ -3,7 +3,7 @@ import { type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from '../schema'
 import Problem from "../../../entities/problem";
 import type { IFindAllFilter } from "../../../interfaces/DAO/problemDAO";
-import { and, eq, inArray, like, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, sql } from "drizzle-orm";
 import {
     problemsToCategoriesTable,
     problemsTable,
@@ -23,7 +23,7 @@ export default class ProblemDAO implements IProblemDAO {
 
     public async findAll(filter: IFindAllFilter, page: number, perPage: number): Promise<Problem[]> {
         const conditions: any = [];
-        if (filter.problem) conditions.push(like(problemsWithLikesView.problem, `${filter.problem}%`));
+        if (filter.problem) conditions.push(ilike(problemsWithLikesView.problem, `${filter.problem}%`));
         if (filter.difficulty) conditions.push(eq(problemsWithLikesView.difficulty, filter.difficulty));
         if (filter.categories && filter.categories.length > 0) {
             const subquery = this.connection
@@ -38,7 +38,7 @@ export default class ProblemDAO implements IProblemDAO {
             conditions.push(inArray(problemsWithLikesView.id, subquery));
         }
 
-        const findResult = await this.connection.select({
+        let findResult = await this.connection.select({
                 id: problemsWithLikesView.id,
                 problem: problemsWithLikesView.problem,
                 description: problemsWithLikesView.description,
@@ -49,7 +49,7 @@ export default class ProblemDAO implements IProblemDAO {
                 likes: problemsWithLikesView.likes,
                 hints: sql<string[]>`ARRAY_AGG(DISTINCT ${hintsTable.hint})`.as("hints"),
                 categories: sql<string[]>`ARRAY_AGG(DISTINCT ${categoriesTable.category})`.as("categories"),
-        })
+            })
             .from(problemsWithLikesView)
             .leftJoin(problemsToCategoriesTable, eq(problemsToCategoriesTable.problem_id, problemsWithLikesView.id))
             .leftJoin(categoriesTable, eq(categoriesTable.id, problemsToCategoriesTable.category_id))
@@ -68,13 +68,19 @@ export default class ProblemDAO implements IProblemDAO {
                 problemsWithLikesView.task_definition,
                 problemsWithLikesView.duration_minutes
             );
-
+        
+        findResult = findResult.map((problem) => {
+            return {
+                ...problem,
+                likes: Math.round(problem.likes as number)
+            }
+        })
         return findResult;
     }
 
     public async findOne(filter: number): Promise<Problem> {
         
-        const findResult = await this.connection.select({
+        let findResult = await this.connection.select({
                 id: problemsWithLikesView.id,
                 problem: problemsWithLikesView.problem,
                 description: problemsWithLikesView.description,
@@ -92,9 +98,24 @@ export default class ProblemDAO implements IProblemDAO {
             .leftJoin(hintsTable, eq(hintsTable.problem_id, problemsWithLikesView.id))
             .where(eq(problemsWithLikesView.id, filter))
             .orderBy(problemsWithLikesView.id)
-            .groupBy(problemsWithLikesView.id, problemsWithLikesView.problem, problemsWithLikesView.description, problemsWithLikesView.difficulty, problemsWithLikesView.score, problemsWithLikesView.likes);
+            .groupBy(
+                problemsWithLikesView.id,
+                problemsWithLikesView.problem,
+                problemsWithLikesView.description,
+                problemsWithLikesView.difficulty,
+                problemsWithLikesView.score,
+                problemsWithLikesView.likes,
+                problemsWithLikesView.task_definition,
+                problemsWithLikesView.duration_minutes
+            );
 
         if (!findResult) throw new Error("Problem not found");
+        findResult = findResult.map((problem) => {
+            return {
+                ...problem,
+                likes: Math.round(problem.likes as number)
+            }
+        })
 
         return findResult[0];
 

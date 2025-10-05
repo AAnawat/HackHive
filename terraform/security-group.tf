@@ -49,6 +49,25 @@ module "problem-sg" {
       cidr_blocks = "0.0.0.0/0"
       self        = false
       description = "Allow SSH access from anywhere"
+    },
+    {
+      from_port   = 1234
+      to_port     = 1234
+      protocol    = "tcp"
+      cidr_blocks = "0.0.0.0/0"
+      self       = false
+      description = "Allow HTTP access from anywhere"
     }
   ]
+
+  egress_with_cidr_blocks = [
+    {
+      rule        = "all-all"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  tags = {
+    role = "problem-sg"
+  }
 }
