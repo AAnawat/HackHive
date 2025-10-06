@@ -51,6 +51,15 @@ services:
       - "1234:1234"
     networks:
       - hackhive-network
+  scheduler:
+    build:
+      context: ./scheduler/
+      dockerfile: dockerfile
+    container_name: hackhive-scheduler
+    env_file:
+      - ./scheduler/.env
+    networks:
+      - hackhive-network
 
 networks:
   hackhive-network:

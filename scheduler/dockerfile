@@ -1,0 +1,15 @@
+FROM node:lts-slim
+
+WORKDIR /app
+
+ENV AWS_ECS_CLUSTER=hackhive-cluster
+
+ENV DATABASE_URL=postgresql://username:password@localhost:5432/hackhive
+
+COPY . .
+
+RUN npm install
+
+RUN npx esbuild src/index.js --bundle --platform=node --minify --outfile=dist/app.js
+
+CMD ["node", "dist/app.js"]
