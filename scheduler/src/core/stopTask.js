@@ -1,3 +1,4 @@
+import { StopTaskCommand } from "@aws-sdk/client-ecs";
 import ecsClient from "../ecs/index.js";
 
 export default async function stopTask(taskList) {
