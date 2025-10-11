@@ -246,6 +246,15 @@ export default function ProblemDetailPage() {
             </div></div>
             </div>
 
+            {/* Button Adding Sentence */}
+            <div>
+              <button
+                onClick={() => alert('Feature not implemented')}
+                className="px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-400 transition-all"
+              >
+                Add Sentence
+              </button>
+            </div>
           </div>
         )}
       </AppLayout>
