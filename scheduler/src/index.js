@@ -1,5 +1,4 @@
 import cron from 'node-cron';
-
 import deleteSession from './core/deleteSession.js';
 import querySessions from './core/queryTask.js';
 import stopTask from './core/stopTask.js';
