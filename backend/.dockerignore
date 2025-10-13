@@ -1,2 +1,4 @@
 node_modules/
+dockerfile
 .env.example
+.env
