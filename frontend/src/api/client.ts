@@ -1,3 +1,4 @@
+// src/api/client.ts
 const API_BASE = '/api';
 
 type FetchOptions = RequestInit & { token?: string };
@@ -18,7 +19,7 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   });
 
   const isJson = res.headers.get('content-type')?.includes('application/json');
-  const data = isJson ? await res.json() : (await res.text());
+  const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
     const message = (data as any)?.error || (typeof data === 'string' ? data : 'Request failed');
@@ -28,7 +29,7 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   return data as T;
 }
 
-// Problems
+// ---------------- Problems ----------------
 export interface ProblemsFilter {
   problem?: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard';
@@ -41,7 +42,7 @@ export function getProblems(filter: ProblemsFilter = {}) {
   const params = new URLSearchParams();
   if (filter.problem) params.set('problem', filter.problem);
   if (filter.difficulty) params.set('difficulty', filter.difficulty);
-  if (filter.categories && filter.categories.length) params.set('categories', filter.categories.join(','));
+  if (filter.categories?.length) params.set('categories', filter.categories.join(','));
   params.set('page', String(filter.page ?? 1));
   params.set('perPage', String(filter.perPage ?? 10));
   return request(`/problems?${params.toString()}`);
@@ -59,7 +60,11 @@ export function voteProblem(id: number, isLiked: boolean, token: string) {
   });
 }
 
-export function submitFlag(id: number, flag: string, token: string): Promise<{ correct: boolean; message: string; score?: number }> {
+export function submitFlag(
+  id: number,
+  flag: string,
+  token: string
+): Promise<{ correct: boolean; message: string; score?: number }> {
   return request(`/problems/${id}/submit`, {
     method: 'POST',
     body: JSON.stringify({ flag }),
@@ -67,7 +72,29 @@ export function submitFlag(id: number, flag: string, token: string): Promise<{ c
   });
 }
 
-// Auth
+export function getProblemCategories(): Promise<{ categories: string[] }> {
+  return request('/problems/categories');
+}
+
+// --------- Create Problem (NEW) ----------
+export interface CreateProblemInput {
+  problem: string;
+  description?: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  score: number;
+  categories?: string[];
+  hints?: string[];
+}
+
+export function createProblem(input: CreateProblemInput, token?: string) {
+  return request(`/problems`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+    token, // ถ้ามีจะถูกใส่เป็น Authorization header อัตโนมัติ
+  });
+}
+
+// ---------------- Auth ----------------
 export function login(gmail: string, password: string): Promise<{ token: string }> {
   return request('/auth/login', {
     method: 'POST',
@@ -75,7 +102,7 @@ export function login(gmail: string, password: string): Promise<{ token: string 
   });
 }
 
-// Users
+// ---------------- Users ----------------
 export function registerUser(gmail: string, username: string, password: string, pfp_path?: string) {
   const payload: any = { gmail, username, password };
   if (pfp_path) payload.pfp_path = pfp_path;
@@ -97,7 +124,7 @@ export function updateUser(id: number, payload: Record<string, unknown>, token: 
   });
 }
 
-// Leaderboard
+// --------------- Leaderboard ---------------
 export interface LeaderboardEntry {
   id: number;
   username: string;
@@ -108,4 +135,3 @@ export interface LeaderboardEntry {
 export function getLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {
   return request(`/users/leaderboard?limit=${limit}`);
 }
-
