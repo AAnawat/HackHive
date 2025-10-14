@@ -17,7 +17,6 @@ import RegisterPage from './pages/RegisterPage';
 import ProblemsPage from './pages/ProblemsPage';
 import ProblemDetailPage from './pages/ProblemDetailPage';
 import ProfilePage from './pages/ProfilePage';
-import AddingProblemPage from './pages/AddingProblemPage';
 
 
 // React router system
@@ -49,10 +48,6 @@ const router = createBrowserRouter([
   {
     path: "/profile/:id",
     Component: ProfilePage
-  },
-  {
-    path: "/problems/add",
-    Component: AddingProblemPage
   },
   {
     path: "/xterm",
