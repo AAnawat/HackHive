@@ -25,6 +25,12 @@ export default class ContainerManager implements IContainerManager {
             cluster: ecsConfig.cluster,
             taskDefinition: taskDefinition,
             launchType: ecsConfig.launchType as LaunchType,
+            tags: [
+                {
+                    key: "container_role",
+                    value: "problem"
+                }
+            ],
             networkConfiguration: {
                 awsvpcConfiguration: {
                     subnets: [ subnet ],

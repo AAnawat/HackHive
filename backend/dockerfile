@@ -13,7 +13,7 @@ ENV DB_PASS=password
 ENV JWT_SECRET=DECOY_JWT_SECRET
 ENV ADMIN_TOKEN=DECOY_ADMIN_TOKEN
 
-COPY package.json .
+COPY . .
 
 RUN npm install --include=dev
 
