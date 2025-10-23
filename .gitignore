@@ -42,11 +42,13 @@ frontend/*.local
 .DS_Store
 
 # terraform
-terraform/state
-terraform/.terraform
-terraform/value/*
+terraform/*/state
+terraform/*/.terraform
+terraform/*/value/*
+!terraform/*/value/example.tfvars
 
 # build directory
 *dist/
 
 /md
+.terraform.lock.hcl
