@@ -20,4 +20,6 @@ resource "aws_db_instance" "hackhive_db" {
   vpc_security_group_ids = [
     module.rds-sg.security_group_id
   ]
+
+  tags = local.default_tag
 }
