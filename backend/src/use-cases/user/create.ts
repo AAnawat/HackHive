@@ -20,17 +20,23 @@ export default class CreateUser {
             throw new Error("Missing required fields")
         }
 
-        const hashedPassword = await this.encryptor.hash(password)
         const validating: any = {
             username: payload.username,
             gmail: payload.gmail,
-            password: hashedPassword,
+            password: password,
         }
-        if (payload.pfp_path) validating.pfp_path = payload.pfp_path
-        const validationResult = this.validator.validate(validating)
-        if (validationResult.error) throw new Error("Invalid input data")
 
-        const createdUserResult = await this.userDAO.create(validationResult.data, validationResult.data.password)
+        const validationResult = this.validator.validate(validating)
+        if (validationResult.error) throw new Error(`Invalid input data: ${validationResult.error.message}`)
+
+        const hashedPassword = await this.encryptor.hash(validationResult.data.password)
+
+        const userToCreate = {
+            ...validationResult.data,
+            password: hashedPassword
+        }
+ 
+        const createdUserResult = await this.userDAO.create(userToCreate, userToCreate.password)
         return createdUserResult
     }
 }

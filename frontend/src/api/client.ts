@@ -1,4 +1,3 @@
-// src/api/client.ts
 const API_BASE = '/api';
 
 type FetchOptions = RequestInit & { token?: string };
@@ -103,9 +102,8 @@ export function login(gmail: string, password: string): Promise<{ token: string 
 }
 
 // ---------------- Users ----------------
-export function registerUser(gmail: string, username: string, password: string, pfp_path?: string) {
+export function registerUser(gmail: string, username: string, password: string) {
   const payload: any = { gmail, username, password };
-  if (pfp_path) payload.pfp_path = pfp_path;
   return request('/users', {
     method: 'POST',
     body: JSON.stringify(payload),

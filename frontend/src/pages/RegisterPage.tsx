@@ -10,16 +10,9 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [pfp, setPfp] = useState('');
-  const [imageError, setImageError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
-  function handleImageUrlChange(url: string) {
-    setPfp(url);
-    setImageError(false);
-  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -30,8 +23,8 @@ export default function RegisterPage() {
       return;
     }
     
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     
@@ -39,8 +32,8 @@ export default function RegisterPage() {
     setError(null);
     setMessage(null);
     try {
-      await registerUser(gmail, username, password, pfp || undefined);
-      setMessage('Registration successful! Redirecting to login...');
+      await registerUser(gmail, username, password);
+      setMessage('Registration successful! Redirecting to login');
       setTimeout(() => navigate('/login'), 1500);
     } catch (e: any) {
       setError(e.message || 'Registration failed');
@@ -60,22 +53,6 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={onSubmit} className="space-y-4">
-            {/* Profile Image Preview */}
-            <div className="flex flex-col items-center mb-6">
-              <div className="w-24 h-24 rounded-full bg-neutral-800 border-2 border-neutral-700 overflow-hidden mb-3 flex items-center justify-center">
-                {pfp && !imageError ? (
-                  <img 
-                    src={pfp} 
-                    alt="Profile preview" 
-                    className="w-full h-full object-cover"
-                    onError={() => setImageError(true)}
-                  />
-                ) : (
-                  <span className="text-4xl">👤</span>
-                )}
-              </div>
-              <p className="text-xs text-neutral-500">Profile Picture Preview</p>
-            </div>
 
             {/* Email */}
             <div>
@@ -116,8 +93,8 @@ export default function RegisterPage() {
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
                 required 
-                minLength={6}
-                placeholder="Minimum 6 characters"
+                minLength={8}
+                placeholder="Minimum 8 characters"
                 className="w-full px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:border-yellow-500 focus:outline-none transition-colors"
               />
             </div>
@@ -135,29 +112,6 @@ export default function RegisterPage() {
                 placeholder="Re-enter your password"
                 className="w-full px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:border-yellow-500 focus:outline-none transition-colors"
               />
-            </div>
-
-            {/* Profile Image URL */}
-            <div>
-              <label className="block text-sm font-medium mb-2 text-neutral-300">
-                Profile Image URL <span className="text-neutral-500">(Optional)</span>
-              </label>
-              <input 
-                type="url"
-                value={pfp} 
-                onChange={(e) => handleImageUrlChange(e.target.value)} 
-                placeholder="https://example.com/your-image.jpg"
-                className="w-full px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:border-yellow-500 focus:outline-none transition-colors"
-              />
-              <p className="text-xs text-neutral-500 mt-1.5 flex items-start gap-1">
-                <span>💡</span>
-                <span>Paste a direct image URL (jpg, png, gif). Leave empty for default avatar.</span>
-              </p>
-              {imageError && (
-                <p className="text-xs text-red-400 mt-1.5">
-                  ⚠️ Failed to load image. Please check the URL.
-                </p>
-              )}
             </div>
 
             {/* Error/Success Messages */}
@@ -178,7 +132,7 @@ export default function RegisterPage() {
               disabled={loading} 
               className="w-full px-4 py-3 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Creating Account' : 'Create Account'}
             </button>
           </form>
 
@@ -189,17 +143,6 @@ export default function RegisterPage() {
               Login here
             </Link>
           </div>
-        </div>
-
-        {/* Tips */}
-        <div className="mt-6 bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-yellow-300 mb-2">Tips for Profile Images:</h3>
-          <ul className="text-xs text-neutral-400 space-y-1">
-            <li>• Use a direct image URL (ending in .jpg, .png, .gif, etc.)</li>
-            <li>• Try services like: imgur.com, postimg.cc, or imgbb.com</li>
-            <li>• Make sure the image is publicly accessible</li>
-            <li>• Recommended size: 200x200px or larger (square format)</li>
-          </ul>
         </div>
       </div>
     </AppLayout>
