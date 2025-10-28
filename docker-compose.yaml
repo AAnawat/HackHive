@@ -41,7 +41,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - hackhive-ps:/var/lib/postgresql/data
+      - hackhive-ps:/var/lib/postgresql/data/pgdata
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
