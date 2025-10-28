@@ -24,7 +24,7 @@ variable "region" {
 }
 
 # AMI Configuration
-variable "ami_name" {
+variable "ami_id" {
   description = "Name of AMI"
   type        = string
   default     = "My-HackHive"

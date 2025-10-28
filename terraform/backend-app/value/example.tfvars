@@ -2,7 +2,7 @@ access_key    = ""
 secret_key    = ""
 token         = ""
 
-ami_name = ""
+ami_id = ""
 
 vpc_id = ""
 public_subnet = [ "", "" ]

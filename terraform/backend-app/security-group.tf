@@ -3,7 +3,7 @@ module "lb-sg" {
 
   name        = "lb_sg"
   description = "Allow traffic to access load balancer"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = var.vpc_id
 
   tags = local.default_tag
 

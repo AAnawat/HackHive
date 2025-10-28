@@ -1,21 +1,6 @@
-data "aws_ami" "hackhive-ami" {
-  most_recent = true
-  owners      = ["self"]
-
-  filter {
-    name   = "name"
-    values = [var.ami_name]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
 resource "aws_launch_template" "backend-template" {
   name                   = "backend-template"
-  image_id               = data.aws_ami.hackhive-ami.id
+  image_id               = var.ami_id
   instance_type          = "t3.small"
   vpc_security_group_ids = [ var.backend_sg_id ]
 
@@ -27,6 +12,7 @@ resource "aws_launch_template" "backend-template" {
 }
 
 resource "aws_autoscaling_group" "backend-asg" {
+  name = "hackhive-backend-asg"
   desired_capacity    = 2
   max_size            = 2
   min_size            = 2
@@ -50,6 +36,8 @@ resource "aws_autoscaling_group" "backend-asg" {
   lifecycle {
     create_before_destroy = true
   }
+
+  wait_for_capacity_timeout = "0"
 }
 
 resource "aws_autoscaling_policy" "scaling" {
