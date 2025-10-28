@@ -1,7 +1,7 @@
 import { EC2Client } from "@aws-sdk/client-ec2";
 import "dotenv/config"
 
-let client;
+let client: EC2Client;
 if (process.env.NODE_ENV === 'production') {
     client = new EC2Client({ region: process.env.AWS_REGION });
 } else {

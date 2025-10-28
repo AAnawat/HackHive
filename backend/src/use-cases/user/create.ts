@@ -27,7 +27,7 @@ export default class CreateUser {
         }
 
         const validationResult = this.validator.validate(validating)
-        if (validationResult.error) throw new Error(`Invalid input data: ${validationResult.error.message}`)
+        if (validationResult.error) throw new Error(`Invalid input data`)
 
         const hashedPassword = await this.encryptor.hash(validationResult.data.password)
 

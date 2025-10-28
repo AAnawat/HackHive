@@ -1,7 +1,7 @@
-import { ECSClient } from "@aws-sdk/client-ecs";
+import { ECS, ECSClient } from "@aws-sdk/client-ecs";
 import "dotenv/config"
 
-let client;
+let client: ECSClient;
 if (process.env.NODE_ENV === 'production') {
     client = new ECSClient({ region: process.env.AWS_REGION });
 } else {

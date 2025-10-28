@@ -61,11 +61,10 @@ export default class UserController {
 
         } catch (error) {
             if (error instanceof Error) {
-                if (error.cause.toString().includes("duplicate key value")) {
+                if (error.cause && error.cause.toString().includes("duplicate key value")) {
                     throw new Error("User already exists")
                 } else {
-                    console.error(error)
-                    throw new Error("Can't create user")
+                    throw new Error(error.message)
                 }
             }
         }

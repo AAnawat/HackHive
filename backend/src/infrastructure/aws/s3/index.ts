@@ -1,7 +1,7 @@
 import { S3Client } from "@aws-sdk/client-s3";
 import "dotenv/config"
 
-let client;
+let client: S3Client;
 if (process.env.NODE_ENV === 'production') {
     client = new S3Client({ region: process.env.AWS_REGION });
 } else {
