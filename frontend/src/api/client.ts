@@ -1,7 +1,11 @@
+// src/api/client.ts
+
+// ========== Base URL ==========
 const API_BASE = '/api';
 
 type FetchOptions = RequestInit & { token?: string };
 
+// ========== Generic Request Helper ==========
 async function request<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -12,10 +16,7 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
     headers['Authorization'] = `Bearer ${options.token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   const isJson = res.headers.get('content-type')?.includes('application/json');
   const data = isJson ? await res.json() : await res.text();
@@ -28,7 +29,7 @@ async function request<T>(path: string, options: FetchOptions = {}): Promise<T> 
   return data as T;
 }
 
-// ---------------- Problems ----------------
+// ========== Problems ==========
 export interface ProblemsFilter {
   problem?: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard';
@@ -44,6 +45,7 @@ export function getProblems(filter: ProblemsFilter = {}) {
   if (filter.categories?.length) params.set('categories', filter.categories.join(','));
   params.set('page', String(filter.page ?? 1));
   params.set('perPage', String(filter.perPage ?? 10));
+
   return request(`/problems?${params.toString()}`);
 }
 
@@ -71,11 +73,11 @@ export function submitFlag(
   });
 }
 
+// ========== API: Get Problem Categories ==========
 export function getProblemCategories(): Promise<{ categories: string[] }> {
-  return request('/problems/categories');
+  return request('/problems/categories/list');
 }
-
-// ---------------- Auth ----------------
+// ========== Auth ==========
 export function login(gmail: string, password: string): Promise<{ token: string }> {
   return request('/auth/login', {
     method: 'POST',
@@ -83,12 +85,11 @@ export function login(gmail: string, password: string): Promise<{ token: string 
   });
 }
 
-// ---------------- Users ----------------
+// ========== Users ==========
 export function registerUser(gmail: string, username: string, password: string) {
-  const payload: any = { gmail, username, password };
   return request('/users', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ gmail, username, password }),
   });
 }
 
@@ -104,7 +105,7 @@ export function updateUser(id: number, payload: Record<string, unknown>, token: 
   });
 }
 
-// --------------- Leaderboard ---------------
+// ========== Leaderboard ==========
 export interface LeaderboardEntry {
   id: number;
   username: string;
