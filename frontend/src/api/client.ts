@@ -75,24 +75,6 @@ export function getProblemCategories(): Promise<{ categories: string[] }> {
   return request('/problems/categories');
 }
 
-// --------- Create Problem (NEW) ----------
-export interface CreateProblemInput {
-  problem: string;
-  description?: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  score: number;
-  categories?: string[];
-  hints?: string[];
-}
-
-export function createProblem(input: CreateProblemInput, token?: string) {
-  return request(`/problems`, {
-    method: 'POST',
-    body: JSON.stringify(input),
-    token, // ถ้ามีจะถูกใส่เป็น Authorization header อัตโนมัติ
-  });
-}
-
 // ---------------- Auth ----------------
 export function login(gmail: string, password: string): Promise<{ token: string }> {
   return request('/auth/login', {
