@@ -41,7 +41,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - hackhive-ps:/var/lib/postgresql/data/pgdata
+      - hackhive-ps:/var/lib/postgresql/18/docker
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
