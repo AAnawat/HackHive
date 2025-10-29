@@ -57,23 +57,6 @@ export default function Header() {
               </span>
             </NavLink>
 
-            {user && (
-              <NavLink 
-                to="/xterm" 
-                className={({ isActive }) => 
-                  `px-4 py-2 rounded-lg font-medium transition-all ${
-                    isActive 
-                      ? 'bg-yellow-500/10 text-yellow-400 shadow-lg shadow-yellow-500/20' 
-                      : 'text-neutral-300 hover:text-white hover:bg-neutral-800/50'
-                  }`
-                }
-              >
-                <span className="flex items-center gap-2">
-                  <span>💻</span>
-                  <span>Terminal</span>
-                </span>
-              </NavLink>
-            )}
           </nav>
 
           {/* User Section */}
@@ -145,24 +128,6 @@ export default function Header() {
                           <span className="text-sm">My Profile</span>
                         </Link>
                         
-                        <Link
-                          to="/problems"
-                          onClick={() => setIsProfileOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-neutral-800 transition-colors md:hidden"
-                        >
-                          <span className="text-lg">🍯</span>
-                          <span className="text-sm">Challenges</span>
-                        </Link>
-                        
-                        <Link
-                          to="/xterm"
-                          onClick={() => setIsProfileOpen(false)}
-                          className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-neutral-800 transition-colors md:hidden"
-                        >
-                          <span className="text-lg">💻</span>
-                          <span className="text-sm">Terminal</span>
-                        </Link>
-
                         <div className="border-t border-neutral-800 my-2"></div>
                         
                         <button
@@ -227,23 +192,6 @@ export default function Header() {
               <span>🍯</span>
               <span className="font-medium">Challenges</span>
             </NavLink>
-            
-            {user && (
-              <NavLink
-                to="/xterm"
-                onClick={() => setIsMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-yellow-500/10 text-yellow-400'
-                      : 'text-neutral-300 hover:bg-neutral-800/50'
-                  }`
-                }
-              >
-                <span>💻</span>
-                <span className="font-medium">Terminal</span>
-              </NavLink>
-            )}
           </div>
         )}
       </div>
