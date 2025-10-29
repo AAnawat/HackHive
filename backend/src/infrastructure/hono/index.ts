@@ -6,6 +6,7 @@ import userRouter from './routes/userRouter'
 import authRouter from './routes/authRouter'
 import problemRouter from './routes/problemRouter'
 import sessionRouter from './routes/sessionRouter'
+import leaderboardRoute from './routes/userRouter'
 
 
 const app = new Hono({ strict: false }).basePath('/api')
@@ -30,7 +31,7 @@ app.route("/users", userRouter)
 app.route("/auth", authRouter)
 app.route("/problems", problemRouter)
 app.route("/sessions", sessionRouter)
-
+app.route("/leaderboard", leaderboardRoute)
 
 serve({
   fetch: app.fetch,

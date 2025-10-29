@@ -1,11 +1,8 @@
-// src/api/client.ts
-
 // ========== Base URL ==========
 const API_BASE = 'http://localhost:8080/api';
 
 type FetchOptions = RequestInit & { token?: string };
 
-// ========== Generic Request Helper ==========
 async function request<T>(path: string, options: FetchOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -181,14 +178,6 @@ async function requestFormData<T>(path: string, options: FetchOptions = {}): Pro
   }
 }
 
-// ========== Leaderboard ==========
-export interface LeaderboardEntry {
-  id: number;
-  username: string;
-  totalScore: number;
-  problemsSolved: number;
-}
-
-export function getLeaderboard(limit: number = 50): Promise<LeaderboardEntry[]> {
-  return request(`/users/leaderboard?limit=${limit}`);
+export  function getLeaderboard(limit: number = 20): Promise<any[]> {
+  return request(`/leaderboard?limit=${limit}`);
 }
