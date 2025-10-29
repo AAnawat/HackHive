@@ -90,7 +90,7 @@ export default function ProblemDetailPage() {
         <div className="mb-4">
           <button
             onClick={() => navigate(-1)}
-            className="px-3 py-1.5 rounded border border-neutral-800 hover:border-yellow-400 hover:text-yellow-400 transition text-sm"
+            className="px-3 py-1.5 rounded border border-neutral-1000 hover:border-yellow-400 hover:text-yellow-400 transition text-sm"
           >
             ← Back to Problems
           </button>
@@ -117,25 +117,25 @@ export default function ProblemDetailPage() {
                   <h1 className="text-3xl font-bold">{problem.problem}</h1>
                   <span
                     className={`text-xs px-3 py-1 rounded-full font-semibold ${problem.difficulty === 'Easy'
-                        ? 'bg-green-500/10 text-green-400 border border-green-500/30'
-                        : problem.difficulty === 'Medium'
-                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
-                          : 'bg-red-500/10 text-red-400 border border-red-500/30'
+                      ? 'bg-green-500/10 text-green-400 border border-green-500/30'
+                      : problem.difficulty === 'Medium'
+                        ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
+                        : 'bg-red-500/10 text-red-400 border border-red-500/30'
                       }`}
                   >
                     {problem.difficulty}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-neutral-400">
-                  <span>🎯 {problem.score} points</span>
-                  <span>❤️ {problem.like ?? 0} likes</span>
+                  <span>🍯 {problem.score} points</span>
+                  <span>🐝 {problem.like ?? 0} likes</span>
                 </div>
               </div>
               <button
                 onClick={() => setTerminalOpen(!terminalOpen)}
                 className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${terminalOpen
-                    ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
-                    : 'bg-yellow-500 text-black hover:bg-yellow-400'
+                  ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
+                  : 'bg-yellow-500 text-black hover:bg-yellow-400'
                   }`}
               >
                 💻 {terminalOpen ? 'Hide Terminal' : 'Open Terminal'}
@@ -184,13 +184,14 @@ export default function ProblemDetailPage() {
                     {problem.categories!.map((c) => (
                       <span
                         key={c}
-                        className="text-sm px-3 py-1 rounded-full bg-neutral-800 border border-neutral-700 text-neutral-300"
+                        className="text-sm px-3 py-1 rounded-full border border-yellow-600 bg-yellow-900/40 text-yellow-300 font-medium hover:bg-yellow-800/60 transition"
                       >
                         {c}
                       </span>
                     ))}
                   </div>
                 )}
+
 
                 {/* Hints */}
                 {!!(problem.hints?.length) && (
@@ -235,8 +236,8 @@ export default function ProblemDetailPage() {
                     {flagResult && (
                       <div
                         className={`p-4 rounded-lg border ${flagResult.correct
-                            ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                            : 'bg-red-500/10 border-red-500/30 text-red-400'
+                          ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                          : 'bg-red-500/10 border-red-500/30 text-red-400'
                           }`}
                       >
                         <div className="flex items-center gap-2 font-semibold mb-1">

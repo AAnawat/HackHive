@@ -87,7 +87,7 @@ export default function HomePage() {
               <StatCard 
                 label="Total Challenges" 
                 value={stats.total} 
-                icon="🎯"
+                icon="🍯"
                 color="yellow"
               />
               <StatCard 
@@ -194,7 +194,7 @@ export default function HomePage() {
             </h2>
             <div className="space-y-4">
               <QuickActionCard
-                icon="🎯"
+                icon="🍯"
                 title="Browse Challenges"
                 description="Explore CTF problems across multiple categories and difficulty levels"
                 link="/problems"
@@ -217,7 +217,7 @@ export default function HomePage() {
               
               {/* Platform Info */}
               <div className="bg-gradient-to-br from-yellow-500/5 to-orange-500/5 rounded-lg p-6 border border-yellow-500/20">
-                <h3 className="font-semibold mb-3 text-yellow-300">Why HackHive?</h3>
+                <h3 className="font-semibold mb-3 text-yellow-300">Why Choose HackHive?</h3>
                 <ul className="space-y-2 text-sm text-neutral-300">
                   <li className="flex items-start gap-2">
                     <span className="text-yellow-500 mt-0.5">✓</span>
@@ -289,8 +289,8 @@ function ProblemCard({ problem }: { problem: Problem }) {
         {problem.description || 'No description available'}
       </p>
       <div className="flex items-center justify-between text-xs text-neutral-500">
-        <span>🎯 {problem.score} pts</span>
-        <span>❤️ {problem.like ?? 0} likes</span>
+        <span>🍯 {problem.score} pts</span>
+        <span>🐝 {problem.like ?? 0} likes</span>
       </div>
     </Link>
   );
