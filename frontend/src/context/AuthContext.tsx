@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { decodeJwt } from '../utils/jwt';
 import type { User } from '../types';
-import { login as apiLogin } from '../api/client';
+import { login as apiLogin, getUser } from '../api/client';
 
 interface AuthContextValue {
   token: string | null;
   user: User | null;
   login: (gmail: string, password: string) => Promise<void>;
   logout: () => void;
+  reloadUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -35,7 +36,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
   }
 
-  const value = useMemo<AuthContextValue>(() => ({ token, user, login, logout }), [token, user]);
+  async function reloadUser() {
+    if (!user?.id) {
+      throw new Error('No user to reload');
+    }
+    
+    try {
+      const updatedUser = await getUser(user.id);
+      setUser(updatedUser as User);
+    } catch (error) {
+      console.error('Failed to reload user:', error);
+      throw error;
+    }
+  }
+
+  const value = useMemo<AuthContextValue>(() => ({ token, user, login, logout, reloadUser }), [token, user]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

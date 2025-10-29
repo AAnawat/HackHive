@@ -93,16 +93,92 @@ export function registerUser(gmail: string, username: string, password: string) 
   });
 }
 
+// Helper function to create FormData for user updates with file
+export function createUserUpdateFormData(payload: Record<string, unknown>, file?: File): FormData {
+  const formData = new FormData();
+
+  // Add all text fields to FormData
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      formData.append(key, String(value));
+    }
+  });
+
+  // Add file if provided
+  if (file) {
+    formData.append('profile_pic', file);
+  }
+
+  return formData;
+}
+
 export function getUser(id: number) {
   return request(`/users/${id}`);
 }
 
-export function updateUser(id: number, payload: Record<string, unknown>, token: string) {
-  return request(`/users/${id}`, {
+export function updateUser(id: number, payload: FormData, token: string) {
+  // Validate that payload is FormData since backend only accepts FormData
+  if (!(payload instanceof FormData)) {
+    throw new Error('updateUser only accepts FormData. Backend requires FormData for all user updates.');
+  }
+
+  const options: FetchOptions = {
     method: 'PUT',
-    body: JSON.stringify(payload),
     token,
-  });
+    // For FormData, don't set Content-Type header - let browser set it with boundary
+    body: payload
+  };
+
+  return requestFormData(`/users/${id}`, options);
+}
+
+// Request helper specifically for FormData requests
+async function requestFormData<T>(path: string, options: FetchOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {};
+
+  // Don't set Content-Type for FormData - let browser set it with boundary
+  // Add any additional headers (but not Content-Type)
+  if (options.headers) {
+    const additionalHeaders = options.headers as Record<string, string>;
+    Object.entries(additionalHeaders).forEach(([key, value]) => {
+      if (key.toLowerCase() !== 'content-type') {
+        headers[key] = value;
+      }
+    });
+  }
+
+  if (options.token) {
+    headers['Authorization'] = `Bearer ${options.token}`;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+    const isJson = res.headers.get('content-type')?.includes('application/json');
+    const data = isJson ? await res.json() : await res.text();
+
+    if (!res.ok) {
+      const message = (data as any)?.error || (typeof data === 'string' ? data : 'Request failed');
+
+      // Enhanced error handling for FormData upload scenarios
+      if (res.status === 415) {
+        throw new Error('Unsupported file type. Please select a valid image file.');
+      }
+      if (res.status >= 500) {
+        throw new Error('Server error during upload. Please try again.');
+      }
+
+      throw new Error(message);
+    }
+
+    return data as T;
+  } catch (error) {
+    // Handle network errors for FormData uploads
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error during upload. Please check your connection and try again.');
+    }
+    throw error;
+  }
 }
 
 // ========== Leaderboard ==========

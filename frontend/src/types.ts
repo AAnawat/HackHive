@@ -16,6 +16,7 @@ export interface User {
   username: string;
   gmail: string;
   pfp_path: string;
+  score?: number;
 }
 
 

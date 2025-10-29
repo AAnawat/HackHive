@@ -52,3 +52,6 @@ terraform/*/value/*
 
 /md
 .terraform.lock.hcl
+
+.kiro
+.vscode
