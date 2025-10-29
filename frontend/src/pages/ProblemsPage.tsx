@@ -9,7 +9,7 @@ import ProblemCard from '../components/ProblemCard';
 export default function ProblemsPage() {
   const location = useLocation();
   const navigate = useNavigate();
-
+  
   const [problems, setProblems] = useState<Problem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -264,7 +264,7 @@ export default function ProblemsPage() {
                         sp.set('cat', cat);
                         navigate({ pathname: location.pathname, search: sp.toString() }, { replace: true });
                       }}
-                      className="text-xs px-2 py-1 rounded border border-neutral-800 hover:border-yellow-400 hover:text-yellow-400 transition"
+                      className="text-xs px-2 py-1 rounded border border-neutral-1000 hover:border-yellow-400 hover:text-yellow-400 transition"
                     >
                       View only this category
                     </button>
@@ -295,7 +295,7 @@ export default function ProblemsPage() {
         <button
           disabled={!canPrev}
           onClick={() => setPage((p) => Math.max(1, p - 1))}
-          className="px-3 py-1 rounded bg-neutral-800 disabled:opacity-50"
+          className="text-xs px-2 py-1 rounded border border-neutral-1000 hover:border-yellow-400 hover:text-yellow-400 transition"
         >
           Prev
         </button>
@@ -303,7 +303,7 @@ export default function ProblemsPage() {
         <button
           disabled={!canNext}
           onClick={() => setPage((p) => p + 1)}
-          className="px-3 py-1 rounded bg-neutral-800 disabled:opacity-50"
+          className="text-xs px-2 py-1 rounded border border-neutral-1000 hover:border-yellow-400 hover:text-yellow-400 transition"
         >
           Next
         </button>

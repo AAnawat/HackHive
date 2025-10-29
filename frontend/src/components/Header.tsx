@@ -52,7 +52,7 @@ export default function Header() {
               }
             >
               <span className="flex items-center gap-2">
-                <span>🎯</span>
+                <span>🍯</span>
                 <span>Challenges</span>
               </span>
             </NavLink>
@@ -150,7 +150,7 @@ export default function Header() {
                           onClick={() => setIsProfileOpen(false)}
                           className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-neutral-800 transition-colors md:hidden"
                         >
-                          <span className="text-lg">🎯</span>
+                          <span className="text-lg">🍯</span>
                           <span className="text-sm">Challenges</span>
                         </Link>
                         
@@ -224,7 +224,7 @@ export default function Header() {
                 }`
               }
             >
-              <span>🎯</span>
+              <span>🍯</span>
               <span className="font-medium">Challenges</span>
             </NavLink>
             
