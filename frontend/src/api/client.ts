@@ -1,7 +1,7 @@
 // src/api/client.ts
 
 // ========== Base URL ==========
-const API_BASE = '/api';
+const API_BASE = 'http://localhost:8080/api';
 
 type FetchOptions = RequestInit & { token?: string };
 

@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 
 import userRouter from './routes/userRouter'
 import authRouter from './routes/authRouter'
@@ -8,6 +9,18 @@ import sessionRouter from './routes/sessionRouter'
 
 
 const app = new Hono({ strict: false }).basePath('/api')
+
+app.use(
+  '*',
+  cors({
+    origin: '*',
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: ['X-Response-Time'],
+    maxAge: 600,
+    credentials: true,
+  })
+)
 
 app.get("/health", (c) => {
   return c.json({message: "Still Running."})
