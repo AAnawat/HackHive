@@ -1,4 +1,3 @@
-// src/components/ProblemCard.tsx
 import { Link } from 'react-router-dom';
 import type { Problem } from '../types';
 import { forwardRef } from 'react';
@@ -30,7 +29,19 @@ const ProblemCard = forwardRef<HTMLAnchorElement, Props>(({ problem, isNew }, re
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-lg font-semibold line-clamp-1">{title}</h3>
-        <span className="text-xs px-2 py-1 rounded bg-neutral-800">{difficulty}</span>
+        <span
+          className={`text-xs font-bold px-2 py-1 rounded capitalize text-gray-300 ${
+            difficulty === "Easy"
+              ? "bg-green-600"
+              : difficulty === "Medium"
+              ? "bg-yellow-600 text-black"
+              : difficulty === "Hard"
+              ? "bg-red-600"
+              : "bg-neutral-800"
+          }`}
+        >
+          {difficulty}
+        </span>
       </div>
 
       <p className="text-neutral-300 mt-2 line-clamp-3">

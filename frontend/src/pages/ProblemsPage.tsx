@@ -1,4 +1,3 @@
-// src/pages/ProblemsPage.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import { getProblems, getProblemCategories } from '../api/client';
@@ -291,11 +290,11 @@ export default function ProblemsPage() {
         )
       )}
 
-      <div className="flex items-center gap-2 mt-6">
+      <div className="flex items-center justify-center gap-2 mt-6">
         <button
           disabled={!canPrev}
           onClick={() => setPage((p) => Math.max(1, p - 1))}
-          className="px-3 py-1 rounded bg-neutral-800 disabled:opacity-50"
+          className="button px-3 py-1 rounded bg-neutral-800 disabled:opacity-50 hover:text-yellow-400 hover:bg-neutral-700 transition-colors"
         >
           Prev
         </button>
@@ -303,7 +302,7 @@ export default function ProblemsPage() {
         <button
           disabled={!canNext}
           onClick={() => setPage((p) => p + 1)}
-          className="px-3 py-1 rounded bg-neutral-800 disabled:opacity-50"
+          className="button px-3 py-1 rounded bg-neutral-800 disabled:opacity-50 hover:text-yellow-400 hover:bg-neutral-700 transition-colors"
         >
           Next
         </button>
