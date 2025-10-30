@@ -3,6 +3,7 @@ import AppLayout from '../layouts/AppLayout';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getProblems, getLeaderboard  } from '../api/client';
+import ProblemCard from '../components/ProblemCard';
 import type { Problem, LeaderboardEntry } from '../types';
 
 export default function HomePage() {
@@ -369,38 +370,6 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
       </div>
       <div className="text-3xl font-bold text-white">{value}</div>
     </div>
-  );
-}
-
-// Problem Card Component
-function ProblemCard({ problem }: { problem: Problem }) {
-  const difficultyColors = {
-    Easy: 'bg-green-500/10 text-green-400 border-green-500/30',
-    Medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30',
-    Hard: 'bg-red-500/10 text-red-400 border-red-500/30',
-  };
-
-  return (
-    <Link 
-      to={`/problems/${problem.id}`}
-      className="block bg-neutral-900 rounded-lg p-6 border border-neutral-800 hover:border-yellow-500/50 transition-all hover:shadow-lg hover:shadow-yellow-500/10 group"
-    >
-      <div className="flex items-start justify-between mb-3">
-        <h3 className="font-semibold text-lg group-hover:text-yellow-400 transition-colors">
-          {problem.problem}
-        </h3>
-        <span className={`text-xs px-2 py-1 rounded border ${difficultyColors[problem.difficulty]}`}>
-          {problem.difficulty}
-        </span>
-      </div>
-      <p className="text-sm text-neutral-400 mb-4 line-clamp-2">
-        {problem.description || 'No description available'}
-      </p>
-      <div className="flex items-center justify-between text-xs text-neutral-500">
-        <span>🍯 {problem.score} pts</span>
-        <span>🐝 {problem.like ?? 0} likes</span>
-      </div>
-    </Link>
   );
 }
 
