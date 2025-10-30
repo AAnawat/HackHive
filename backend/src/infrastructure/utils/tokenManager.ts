@@ -6,7 +6,7 @@ import secrets from '../../config/secrets';
 
 class TokenManager implements ITokenManager {
     public async generate(data: User): Promise<string> {
-        const token = jwt.sign(data, secrets.jwtSecret, { expiresIn: "3h" })
+        const token = jwt.sign(data, secrets.jwtSecret)
         return token
     }
 
