@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Xterm from '../components/xterm';
@@ -23,7 +23,6 @@ export default function ProblemDetailPage() {
   // Vote
   const [likeLoading, setLikeLoading] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
-  const [voteDone, setVoteDone] = useState<boolean>(false);
   const [voteChoice, setVoteChoice] = useState<vote>(null);
 
   // Hints toggle
@@ -75,7 +74,6 @@ export default function ProblemDetailPage() {
     } else {
       setVoteChoice(null);
     }
-    setVoteDone(false);
   }, [problem, user]);
 
   async function vote(choice: 'like' | 'dislike') {
@@ -86,7 +84,7 @@ export default function ProblemDetailPage() {
     setLikeLoading(true);
     setLikeError(null);
     try {
-      await voteProblem(user.id, choice === 'like', token);
+      await voteProblem(problemId, choice === 'like', token);
 
       const fresh = await getProblem(problemId);
       const normalized: Problem = {
@@ -96,7 +94,6 @@ export default function ProblemDetailPage() {
       setProblem(normalized);
 
       setVoteChoice(choice);
-      setVoteDone(false);
     } catch (e: any) {
       setLikeError(e?.message || 'Failed to vote');
     } finally {
