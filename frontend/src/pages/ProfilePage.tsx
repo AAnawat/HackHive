@@ -2,12 +2,10 @@ import AppLayout from '../layouts/AppLayout';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { updateUser, createUserUpdateFormData } from '../api/client';
+import { updateUser, createUserUpdateFormData, getUser } from '../api/client';
 import type { User } from '../types';
 import ScoreSection from '../components/ScoreSection';
 
-
-// Type definitions for enhanced profile page
 type ViewMode = 'normal' | 'editing';
 
 interface EditFormData {
@@ -29,7 +27,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(authUser);
   const [mode, setMode] = useState<ViewMode>('normal');
   const [loadingMessage, setLoadingMessage] = useState<string>('');
-
+  const [scoreLoading, setScoreLoading] = useState<boolean>(true);
   const [editForm, setEditForm] = useState<EditFormData>({
     username: '',
     gmail: '',
@@ -44,20 +42,17 @@ export default function ProfilePage() {
     message: null
   });
 
-  // Mode transition functions with proper cleanup
   const enterEditMode = () => {
     if (user) {
-      // Initialize edit form with current user data as per requirement 2.1
       setEditForm({
         username: user.username || '',
         gmail: user.gmail || '',
-        currentPassword: '', // Always start with empty current password
-        newPassword: '', // Always start with empty new password
+        currentPassword: '',
+        newPassword: '',
         selectedFile: null
       });
     }
 
-    // Clear any existing UI messages and loading states when entering edit mode
     setUIState({
       loading: false,
       error: null,
@@ -65,12 +60,10 @@ export default function ProfilePage() {
     });
     setLoadingMessage('');
 
-    // Transition to editing mode
     setMode('editing');
   };
 
   const exitEditMode = () => {
-    // Proper cleanup when switching modes - reset all edit-related state
     setEditForm({
       username: '',
       gmail: '',
@@ -79,7 +72,6 @@ export default function ProfilePage() {
       selectedFile: null
     });
 
-    // Clear any existing UI messages and loading states when exiting edit mode
     setUIState({
       loading: false,
       error: null,
@@ -87,23 +79,19 @@ export default function ProfilePage() {
     });
     setLoadingMessage('');
 
-    // Transition to normal mode
     setMode('normal');
   };
 
   useEffect(() => {
     if (!authUser) return;
 
-    // Update local user state when authUser changes (including after reloadUser)
     setUser(authUser);
 
-    // Initialize edit form with user data if in editing mode
     if (mode === 'editing') {
       setEditForm(prev => ({
         ...prev,
         username: authUser.username || '',
         gmail: authUser.gmail || '',
-        // Keep existing password fields and selectedFile values
         currentPassword: prev.currentPassword,
         newPassword: prev.newPassword,
         selectedFile: prev.selectedFile
@@ -111,10 +99,8 @@ export default function ProfilePage() {
     }
   }, [authUser, mode]);
 
-  // Cleanup effect for mode transitions - ensures proper cleanup when switching modes
   useEffect(() => {
     return () => {
-      // Cleanup any object URLs created for file previews to prevent memory leaks
       if (editForm.selectedFile) {
         URL.revokeObjectURL(URL.createObjectURL(editForm.selectedFile));
       }
@@ -137,7 +123,7 @@ export default function ProfilePage() {
   const renderNormalView = () => (
     <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-300">
       {/* Score Section */}
-      <ScoreSection user={user} loading={!user && !!authUser} />
+      <ScoreSection user={user} loading={scoreLoading} />
 
       {/* Profile Card - Normal View with mode-specific styling */}
       <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 backdrop-blur px-5 sm:px-6 py-6 sm:py-8 shadow-lg relative">
@@ -263,7 +249,6 @@ export default function ProfilePage() {
     const hasCurrentPassword = editForm.currentPassword.trim().length > 0;
     const hasNewPassword = editForm.newPassword.trim().length > 0;
 
-    // If either password field has content, both are required
     if (hasCurrentPassword || hasNewPassword) {
       if (!hasCurrentPassword) {
         errors.currentPassword = 'Current password is required when changing password';
@@ -272,7 +257,6 @@ export default function ProfilePage() {
         errors.newPassword = 'New password is required when changing password';
       }
 
-      // Validate new password strength if provided
       if (hasNewPassword && editForm.newPassword.length < 8) {
         errors.newPassword = 'New password must be at least 8 characters long';
       }
@@ -297,14 +281,12 @@ export default function ProfilePage() {
     return errors;
   };
 
-  // Handle form input changes with proper state binding
   const handleFormChange = (field: keyof EditFormData, value: string | File | null) => {
     setEditForm(prev => ({
       ...prev,
       [field]: value
     }));
 
-    // Clear field-specific errors when user starts typing
     if (uiState.error && typeof value === 'string' && value.trim()) {
       setUIState(prev => ({
         ...prev,
@@ -313,7 +295,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Handle save operation with proper loading states as per requirement 3.1
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -325,7 +306,6 @@ export default function ProfilePage() {
       return;
     }
 
-    // Validate form before submission
     const fieldErrors = getFieldErrors();
     if (Object.keys(fieldErrors).length > 0) {
       const errorCount = Object.keys(fieldErrors).length;
@@ -340,7 +320,6 @@ export default function ProfilePage() {
       return;
     }
 
-    // Set loading state with appropriate message
     setUIState(prev => ({
       ...prev,
       loading: true,
@@ -366,7 +345,6 @@ export default function ProfilePage() {
       const hasTextChanges = Object.keys(payload).length > 0;
       const hasFileChange = editForm.selectedFile !== null;
 
-      // Additional file validation before upload
       if (hasFileChange && editForm.selectedFile) {
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(editForm.selectedFile.type)) {
@@ -379,7 +357,6 @@ export default function ProfilePage() {
         }
       }
 
-      // Set specific loading message based on update type
       const isPasswordChange = payload.oldPass && payload.newPass;
 
       if (hasFileChange && hasTextChanges) {
@@ -405,17 +382,13 @@ export default function ProfilePage() {
         return;
       }
 
-      // Always use FormData as backend only accepts FormData for user updates
       let updatePayload: FormData;
 
       if (hasFileChange && editForm.selectedFile) {
-        // Use FormData with both text fields and file
         updatePayload = createUserUpdateFormData(payload, editForm.selectedFile);
       } else if (hasTextChanges) {
-        // Use FormData for text-only updates (no file)
         updatePayload = createUserUpdateFormData(payload);
       } else {
-        // This shouldn't happen due to earlier check, but handle gracefully
         setUIState(prev => ({
           ...prev,
           loading: false,
@@ -424,10 +397,8 @@ export default function ProfilePage() {
         return;
       }
 
-      // Call the updateUser API function with appropriate payload
       await updateUser(user.id, updatePayload, token);
 
-      // Set specific success message based on update type
       let successMessage = '';
       const updatedFields = [];
 
@@ -459,32 +430,27 @@ export default function ProfilePage() {
         message: successMessage
       }));
 
-      // Clear loading message
       setLoadingMessage('');
 
-      // Return to normal mode after successful save as per requirement 3.3
       setTimeout(async () => {
         setMode('normal');
-        // Clear success message when transitioning back to normal mode
         setUIState(prev => ({
           ...prev,
           message: null
         }));
 
-        // Refresh user data to reflect changes using reloadUser from AuthContext
         try {
           await reloadUser();
         } catch (error) {
-          // Silently handle refresh errors - user data will be stale but functional
           console.error('Failed to reload user after update:', error);
         }
-      }, 2000); // Show success message briefly before transitioning
+      }, 2000);
 
     } catch (e: any) {
-      // Provide specific error messages based on error content and context
+
       let errorMessage = e.message || 'Update failed';
 
-      // Handle specific error scenarios
+
       if (e.message?.includes('Unsupported file type')) {
         errorMessage = 'Please select a valid image file (JPG, PNG, GIF, or WebP)';
       } else if (e.message?.includes('Network error') || e.message?.includes('fetch')) {
@@ -514,7 +480,38 @@ export default function ProfilePage() {
     }
   };
 
-  // Render Edit View - form inputs for editing as per requirements 2.2, 4.4, 5.2
+  useEffect(() => {
+  const fetchUser = async () => {
+    if (!authUser || !token) return;
+    try {
+      setScoreLoading(true);
+
+      const res = await getUser(authUser.id) as { user?: User } | User;
+      const raw = (res as any)?.user ?? res;
+
+      const normalizedScore = Number(
+        (raw as any)?.score ??
+        (raw as any)?.totalScore ??
+        (raw as any)?.points ??
+        0
+      );
+
+      setUser(prev => ({
+        ...(prev ?? ({} as User)),
+        ...(raw as User),
+        score: Number.isFinite(normalizedScore) ? normalizedScore : 0,
+      }));
+    } catch (e: any) {
+      setUIState(prev => ({ ...prev, error: e?.message ?? 'Failed to load user' }));
+    } finally {
+      setScoreLoading(false);
+    }
+  };
+
+  fetchUser();
+}, [authUser?.id, token]);
+
+
   const renderEditView = () => {
     const fieldErrors = getFieldErrors();
     const hasValidationErrors = Object.keys(fieldErrors).length > 0;
@@ -522,7 +519,7 @@ export default function ProfilePage() {
     return (
       <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-300">
         {/* Score Section */}
-        <ScoreSection user={user} loading={!user && !!authUser} />
+        <ScoreSection user={user} loading={scoreLoading} />
 
         {/* Profile Card - Edit Mode with enhanced styling */}
         <div className="rounded-2xl border border-yellow-500/30 bg-neutral-900/60 backdrop-blur px-5 sm:px-6 py-6 sm:py-8 shadow-lg shadow-yellow-500/5 relative">
@@ -589,7 +586,6 @@ export default function ProfilePage() {
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {
-                // Validate file type
                 const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
                 if (!allowedTypes.includes(file.type)) {
                   setUIState(prev => ({
@@ -599,7 +595,6 @@ export default function ProfilePage() {
                   return;
                 }
 
-                // Clear any existing errors and set the file
                 setUIState(prev => ({
                   ...prev,
                   error: null
