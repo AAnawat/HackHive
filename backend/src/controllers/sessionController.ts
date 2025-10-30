@@ -43,14 +43,13 @@ export default class SessionController {
 
     public async launch(token: string, userId: number, problemId: number): Promise<any> {
         try {
-
             const authorized = await this.authorize.call(token);
             if (!authorized || authorized.id !== userId) 
                 throw new Error("Unauthorized");
 
             const result = await this.startSession.call({ userId, problemId });
+
             return result;
-            
         } catch (error) {
             if (error instanceof Error) {
                 throw new Error(error.message)

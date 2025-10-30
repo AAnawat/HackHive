@@ -32,14 +32,16 @@ export default class SessionDAO implements ISessionDAO {
 
     public async create(userId: number, problemId: number, flag: string): Promise<Session> {
         const createResult = await this.connection.transaction(async (tx) => {
-            const problemDuration = (await tx
+            const problem = (await tx
                 .select({ duration: schema.problemsTable.duration_minutes })
                 .from(schema.problemsTable)
                 .where(eq(schema.problemsTable.id, problemId))
-                .limit(1))[0].duration;
+                .limit(1));
 
-            if (!problemDuration) 
+            if (!problem[0]) 
                 throw new Error("Problem not found");
+
+            const problemDuration = problem[0].duration;
 
             const insertResult = await tx
                 .insert(schema.sessionsTable)

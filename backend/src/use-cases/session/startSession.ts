@@ -67,7 +67,7 @@ export default class StartSession {
         const override = {
             containerOverrides: [
                 {
-                    name: "hackhive-getting-start",
+                    name: problem.task_definition.split(":")[0],
                     environment: [
                         { name: "FLAG", value: createdSession.flag }
                     ]
