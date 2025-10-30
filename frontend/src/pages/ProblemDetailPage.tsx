@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Xterm from '../components/xterm';
-import { getProblem, voteProblem, submitFlag } from '../api/client';
-import type { Problem } from '../types';
+import { getProblem, voteProblem, submitFlag, getSession, launchSession, getSessionStatus } from '../api/client';
+import type { Problem, SessionStatus, SessionItem } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,14 +11,19 @@ export default function ProblemDetailPage() {
   const params = useParams();
   const navigate = useNavigate();
   const id = Number(params.id);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
+  // Problem detail
   const [problem, setProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Like
   const [likeLoading, setLikeLoading] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
+
+  // Hints toggle
+  const [showHints, setShowHints] = useState(false);
 
   // Flag submission
   const [flagInput, setFlagInput] = useState('');
@@ -27,6 +32,26 @@ export default function ProblemDetailPage() {
 
   // Terminal toggle
   const [terminalOpen, setTerminalOpen] = useState(false);
+
+  // Session control
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>('Unknown');
+  const [launching, setLaunching] = useState(false);
+  const pollTimerRef = useRef<number | null>(null);
+
+  const statusToClasses = (status: SessionStatus | null | undefined) => {
+    switch (status) {
+      case 'Running':
+        return 'bg-green-500 border-green-400';
+      case 'Pending':
+        return 'bg-yellow-500 border-yellow-400';
+      default:
+        return 'bg-neutral-500 border-neutral-400';
+    }
+  };
+  const statusLabel = (status: SessionStatus) => (status === 'Unknown' ? 'Unknown' : status);
+
+  const canUnlike = useMemo(() => Math.max(0, problem?.like ?? 0) > 0, [problem?.like]);
 
   // Load problem detail
   useEffect(() => {
@@ -40,12 +65,118 @@ export default function ProblemDetailPage() {
     setError(null);
 
     getProblem(id)
-      .then((data: any) => { if (!cancelled) setProblem(data as Problem); })
-      .catch((e) => { if (!cancelled) setError(e.message || 'Failed to load'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .then((data: any) => {
+        if (cancelled) return;
+        const normalized: Problem = {
+          ...(data as Problem),
+          like: Number((data as any).like ?? (data as any).likes ?? 0),
+        };
+        setProblem(normalized);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message || 'Failed to load');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  // Find an open session (Running/Pending) for this problem+user and start polling
+  useEffect(() => {
+    if (!user || !token || !id) return;
+    let cancelled = false;
+
+    async function setupSession() {
+      setSessionId(null);
+      setSessionStatus('Unknown');
+      setTerminalOpen(false);
+      try {
+        const open = await getOpenSessionStatus(id, user.id, token);
+        if (cancelled) return;
+
+        if (open && open.session && open.session.id) {
+          setSessionId(open.session.id);
+          setSessionStatus(open.status);
+          setTerminalOpen(open.status === 'Running');
+          startPolling(open.session.id);
+        } else {
+          setSessionId(null);
+          setSessionStatus('Unknown');
+          setTerminalOpen(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setSessionStatus('Unknown');
+          setTerminalOpen(false);
+        }
+      }
+    }
+
+    setupSession();
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [id, token, user]);
+
+  // Polling helpers
+  function startPolling(sid: string) {
+    stopPolling(); // Only one poll at a time
+    pollTimerRef.current = window.setInterval(() => pollOnce(sid), 5000);
+    void pollOnce(sid); // one immediate
+  }
+  function stopPolling() {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }
+
+  // Single status check
+  async function pollOnce(sid: string) {
+    if (!token) return;
+    try {
+      const result = await getSessionStatus(sid, token);
+      const status = (result as any).status ?? 'Unknown';
+      setSessionStatus(status);
+      setTerminalOpen(status === 'Running');
+
+      // Stop polling at terminal states
+      if (['Stopped', 'Failed', 'Terminated'].includes(status)) stopPolling();
+    } catch {
+      setSessionStatus('Unknown');
+      setTerminalOpen(false);
+    }
+  }
+
+  // Launch a session (for this problem/user)
+  async function onLaunch() {
+    if (!user || !token) return;
+    setLaunching(true);
+    try {
+      const existing = await getOpenSessionStatus(id, user.id, token);
+      if (existing?.session?.id) {
+        setSessionId(existing.session.id);
+        setSessionStatus(existing.status);
+        setTerminalOpen(existing.status === 'Running');
+        startPolling(existing.session.id);
+        return;
+      }
+
+      const session = await launchSession(String(user.id), String(id), token);
+      setSessionId(session.id);
+      setSessionStatus((session as any).status ?? 'Pending');
+      startPolling(session.id);
+    } catch {
+      setSessionStatus('Unknown');
+    } finally {
+      setLaunching(false);
+    }
+  }
 
   async function handleLike(isLiked: boolean) {
     if (!token) {
@@ -56,7 +187,9 @@ export default function ProblemDetailPage() {
     setLikeError(null);
     try {
       await voteProblem(id, isLiked, token);
-      setProblem((prev) => prev ? { ...prev, like: (prev.like ?? 0) + (isLiked ? 1 : -1) } : prev);
+      setProblem((prev) =>
+        prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) + (isLiked ? 1 : -1)) } : prev
+      );
     } catch (e: any) {
       setLikeError(e.message || 'Failed to vote');
     } finally {
@@ -70,8 +203,13 @@ export default function ProblemDetailPage() {
 
     setFlagSubmitting(true);
     setFlagResult(null);
+    if (!id) {
+        setFlagResult({ correct: false, message: 'No active session. Please launch server first.' });
+        return;
+    }
     try {
-      const result = await submitFlag(id, flagInput.trim(), token);
+      const existing = await getOpenSessionStatus(id, user.id, token);
+      const result = await submitFlag(Number(existing.session.id), flagInput.trim(), token);
       setFlagResult(result);
       if (result.correct) {
         setFlagInput('');
@@ -81,6 +219,43 @@ export default function ProblemDetailPage() {
     } finally {
       setFlagSubmitting(false);
     }
+  }
+
+  // ---- helper: find open session for this problem+user and get its live status
+  async function getOpenSessionStatus(
+    problemId: number,
+    userId: string | number,
+    token?: string
+  ): Promise<{ session: SessionItem; status: SessionStatus } | null> {
+    if (!token || !problemId || userId === undefined || userId === null) return null;
+
+    const resp = await getSession(token);
+    if (!Array.isArray(resp) || resp.length === 0) return null;
+
+    // normalize fields to camelCase (compatible with SessionItem)
+    const list: SessionItem[] = resp.map((s: any) => ({
+      id: String(s.id ?? s.session_id ?? ''),
+      user_id: s.userId ?? s.user_id,
+      problem_id: Number(s.problemId ?? s.problem_id),
+      status: (s.status ?? 'Unknown') as SessionStatus,
+      // updatedAt: s.updatedAt ?? s.updated_at, // เผื่อจะใช้เรียงล่าสุดทีหลัง
+    }));
+
+    const matches = list.filter(
+      (s) =>
+        String(s.user_id) === String(userId) &&
+        Number(s.problem_id) === Number(problemId) &&
+        ['Running', 'Pending'].includes(s.status ?? 'Unknown')
+    );
+    if (matches.length === 0) return null;
+
+    const pick = matches[0];
+    if (!pick?.id) return null;
+
+    const statusResp = await getSessionStatus(pick.id, token);
+    const status = (statusResp as any)?.status ?? 'Unknown';
+
+    return { session: pick, status };
   }
 
   return (
@@ -116,30 +291,55 @@ export default function ProblemDetailPage() {
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-3xl font-bold">{problem.problem}</h1>
                   <span
-                    className={`text-xs px-3 py-1 rounded-full font-semibold ${problem.difficulty === 'Easy'
-                      ? 'bg-green-500/10 text-green-400 border border-green-500/30'
-                      : problem.difficulty === 'Medium'
+                    className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                      problem.difficulty === 'Easy'
+                        ? 'bg-green-500/10 text-green-400 border border-green-500/30'
+                        : problem.difficulty === 'Medium'
                         ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
                         : 'bg-red-500/10 text-red-400 border border-red-500/30'
-                      }`}
+                    }`}
                   >
                     {problem.difficulty}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-neutral-400">
                   <span>🍯 {problem.score} points</span>
-                  <span>🐝 {problem.like ?? 0} likes</span>
+                  <span>🐝 Likes {problem.like ?? 0} %</span>
                 </div>
               </div>
-              <button
-                onClick={() => setTerminalOpen(!terminalOpen)}
-                className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${terminalOpen
-                  ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
-                  : 'bg-yellow-500 text-black hover:bg-yellow-400'
+
+              <div className="flex items-center gap-3">
+                {/* Status pill */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-800 bg-neutral-900">
+                  <span className={`inline-block w-3 h-3 rounded-full border ${statusToClasses(sessionStatus)}`} />
+                  <span className="text-sm text-neutral-300">{statusLabel(sessionStatus)}</span>
+                  {sessionId && <span className="text-xs text-neutral-500 ml-2">#{sessionId.slice(0, 8)}</span>}
+                </div>
+
+                {/* Launch button */}
+                <button
+                  onClick={onLaunch}
+                  disabled={launching}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
+                    launching ? 'bg-neutral-800 text-neutral-400 cursor-wait' : 'bg-yellow-500 text-black hover:bg-yellow-400'
                   }`}
-              >
-                💻 {terminalOpen ? 'Hide Terminal' : 'Open Terminal'}
-              </button>
+                  title="Start a server session"
+                >
+                  🚀 {launching ? 'Launching...' : 'Launch Server'}
+                </button>
+
+                {/* Terminal button */}
+                <button
+                  onClick={() => setTerminalOpen(!terminalOpen)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
+                    terminalOpen
+                      ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
+                      : 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
+                  }`}
+                >
+                  💻 {terminalOpen ? 'Hide Terminal' : 'Open Terminal'}
+                </button>
+              </div>
             </div>
 
             {/* Terminal Section */}
@@ -154,16 +354,12 @@ export default function ProblemDetailPage() {
                     </div>
                     <span className="text-sm text-neutral-400 ml-2">Terminal</span>
                   </div>
-                  <button
-                    onClick={() => setTerminalOpen(false)}
-                    className="text-neutral-400 hover:text-white transition-colors"
-                  >
+                  <button onClick={() => setTerminalOpen(false)} className="text-neutral-400 hover:text-white transition-colors">
                     ✕
                   </button>
                 </div>
                 <div style={{ height: '400px' }}>
-                  {/* เปลี่ยน host ได้ตาม env/dev proxy ของคุณ */}
-                  <Xterm host="http://localhost:8080" />
+                  <Xterm host="http://54.87.224.163:1234" />
                 </div>
               </div>
             )}
@@ -175,11 +371,13 @@ export default function ProblemDetailPage() {
                 {/* Description */}
                 <div className="bg-neutral-900 rounded-lg p-6 border border-neutral-800">
                   <h2 className="text-lg font-semibold mb-3">Description</h2>
-                  <p className="text-neutral-300 leading-relaxed">{problem.description || 'No description available'}</p>
+                  <p className="text-neutral-300 leading-relaxed">
+                    {problem.description || 'No description available'}
+                  </p>
                 </div>
 
                 {/* Categories */}
-                {!!(problem.categories?.length) && (
+                {!!problem.categories?.length && (
                   <div className="flex gap-2 flex-wrap">
                     {problem.categories!.map((c) => (
                       <span
@@ -192,19 +390,29 @@ export default function ProblemDetailPage() {
                   </div>
                 )}
 
-
                 {/* Hints */}
-                {!!(problem.hints?.length) && (
-                  <div className="bg-yellow-500/5 rounded-lg p-6 border border-yellow-500/20">
-                    <h3 className="font-semibold mb-3 text-yellow-300 flex items-center gap-2">💡 Hints</h3>
-                    <ul className="space-y-2 text-neutral-300">
-                      {problem.hints!.map((h, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <span className="text-yellow-500 mt-0.5">•</span>
-                          <span>{h}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {!!problem.hints?.length && (
+                  <div className="bg-yellow-500/5 rounded-lg p-3 border border-yellow-500/20">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-yellow-300 flex items-center gap-2">💡 Hints</h3>
+                      <button
+                        onClick={() => setShowHints(!showHints)}
+                        className="text-sm px-3 py-1 rounded-md border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/10 transition-all"
+                      >
+                        {showHints ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+
+                    {showHints && (
+                      <ul className="space-y-2 text-neutral-300 animate-fadeIn">
+                        {problem.hints!.map((h, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-yellow-500 mt-0.5">•</span>
+                            <span>{h}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>
@@ -220,7 +428,7 @@ export default function ProblemDetailPage() {
                         type="text"
                         value={flagInput}
                         onChange={(e) => setFlagInput(e.target.value)}
-                        placeholder="HackHive{your_flag_here}"
+                        placeholder="flag{your_flag_here}"
                         className="flex-1 px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:border-yellow-500 focus:outline-none"
                         disabled={flagSubmitting}
                       />
@@ -235,10 +443,11 @@ export default function ProblemDetailPage() {
 
                     {flagResult && (
                       <div
-                        className={`p-4 rounded-lg border ${flagResult.correct
-                          ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                          : 'bg-red-500/10 border-red-500/30 text-red-400'
-                          }`}
+                        className={`p-4 rounded-lg border ${
+                          flagResult.correct
+                            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                            : 'bg-red-500/10 border-red-500/30 text-red-400'
+                        }`}
                       >
                         <div className="flex items-center gap-2 font-semibold mb-1">
                           {flagResult.correct ? '✅ Correct!' : '❌ Incorrect'}
@@ -266,9 +475,10 @@ export default function ProblemDetailPage() {
                       👍 Like
                     </button>
                     <button
-                      disabled={likeLoading}
+                      disabled={likeLoading || !canUnlike}
                       onClick={() => handleLike(false)}
                       className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 disabled:opacity-50 transition-all"
+                      title={canUnlike ? '' : 'Cannot unlike below 0'}
                     >
                       👎 Unlike
                     </button>
@@ -277,16 +487,6 @@ export default function ProblemDetailPage() {
                 </div>
               </div>
             </div>
-
-            {/* (Optional) Remove or keep your old demo button */}
-            {/* <div>
-              <button
-                onClick={() => alert('Feature not implemented')}
-                className="px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-400 transition-all"
-              >
-                Add Sentence
-              </button>
-            </div> */}
           </div>
         )}
       </AppLayout>

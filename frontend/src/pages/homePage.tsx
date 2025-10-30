@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getProblems, getLeaderboard, type LeaderboardEntry } from '../api/client';
-import type { Problem } from '../types';
+import { getProblems, getLeaderboard  } from '../api/client';
+import type { Problem, LeaderboardEntry } from '../types';
 
 export default function HomePage() {
   const { user } = useAuth();

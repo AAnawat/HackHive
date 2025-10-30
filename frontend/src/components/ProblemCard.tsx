@@ -67,7 +67,7 @@ const ProblemCard = forwardRef<HTMLAnchorElement, Props>(({ problem, isNew }, re
           🍯 Score: <span className="text-yellow-400">{score}</span>
         </span>
         <span>
-          🐝 Likes: <span className="text-green-400">{likes}</span>
+          🐝 Likes: <span className="text-green-400">{likes}</span> %
         </span>
       </div>
     </Link>

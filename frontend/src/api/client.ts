@@ -1,3 +1,4 @@
+import type { SessionResp, LaunchSessionResp } from '../types';
 // ========== Base URL ==========
 const API_BASE = 'http://localhost:8080/api';
 
@@ -46,24 +47,93 @@ export function getProblems(filter: ProblemsFilter = {}) {
   return request(`/problems?${params.toString()}`);
 }
 
-export function getProblem(id: number) {
-  return request(`/problems/${id}`);
+export async function getProblem(problemId: number) {
+  const res = await fetch(`${API_BASE}/problems/${problemId}`);
+  if (!res.ok) {
+    throw new Error('Failed to fetch problem');
+  }
+  return res.json();
 }
 
-export function voteProblem(id: number, isLiked: boolean, token: string) {
-  return request(`/problems/${id}/vote`, {
+export function voteProblem(userId: number, isLiked: boolean, token: string) {
+  return request(`/problems/${userId}/vote`, {
     method: 'POST',
     body: JSON.stringify({ isLiked }),
     token,
   });
 }
 
+export async function getSession(token?: string): Promise<SessionResp> {
+  return request('/sessions', {
+    method: 'GET',
+    token,
+  });
+}
+
+export async function launchSession(userId: string, problemId: string, token?: string): Promise<LaunchSessionResp> {
+  const res = await fetch(`${API_BASE}/sessions/launch`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ userId, problemId }),
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Launch failed: ${res.status}${detail ? ` - ${detail}` : ''}`);
+  }
+
+  const data = await res.json();
+  return data as LaunchSessionResp;
+}
+
+export async function getSessionStatus(sessionId: number | string, token?: string): Promise<SessionResp> {
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    cache: 'no-store',
+  });
+  console.log('getSessionStatus response:', res);
+  if (!res.ok) {
+    if (res.status === 204) {
+      return {
+        id: String(sessionId),
+        user_id: 0,
+        problem_id: 0,
+        flag: null,
+        status: 'Pending',
+        task_arn: null,
+        ip_address: null,
+        started_at: null,
+        ended_at: null,
+      };
+    }
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Status check failed: ${res.status}${detail ? ` - ${detail}` : ''}`);
+  }
+
+  const data = await res.json();
+  if (data && data.status === 'Active') {
+    data.status = 'Running';
+  }
+  return data as SessionResp;
+}
+
+
 export function submitFlag(
-  id: number,
+  session_id: number,
   flag: string,
   token: string
 ): Promise<{ correct: boolean; message: string; score?: number }> {
-  return request(`/problems/${id}/submit`, {
+  return request(`/problems/${session_id}/submit`, {
     method: 'POST',
     body: JSON.stringify({ flag }),
     token,
@@ -109,11 +179,11 @@ export function createUserUpdateFormData(payload: Record<string, unknown>, file?
   return formData;
 }
 
-export function getUser(id: number) {
-  return request(`/users/${id}`);
+export function getUser(userId: number) {
+  return request(`/users/${userId}`);
 }
 
-export function updateUser(id: number, payload: FormData, token: string) {
+export function updateUser(userId: number, payload: FormData, token: string) {
   // Validate that payload is FormData since backend only accepts FormData
   if (!(payload instanceof FormData)) {
     throw new Error('updateUser only accepts FormData. Backend requires FormData for all user updates.');
@@ -126,7 +196,7 @@ export function updateUser(id: number, payload: FormData, token: string) {
     body: payload
   };
 
-  return requestFormData(`/users/${id}`, options);
+  return requestFormData(`/users/${userId}`, options);
 }
 
 // Request helper specifically for FormData requests
