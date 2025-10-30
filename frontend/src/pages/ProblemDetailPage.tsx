@@ -2,17 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Xterm from '../components/xterm';
-import { getProblem, voteProblem, submitFlag, getSession, launchSession, getSessionStatus } from '../api/client';
+import { getProblem, voteProblem, submitFlag, getSession, launchSession, getSessionStatus, stopSession } from '../api/client';
 import type { Problem, SessionStatus, SessionItem } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-type OneShot = 'like' | 'dislike' | null;
+type vote = 'like' | 'dislike' | null;
 
 export default function ProblemDetailPage() {
   const params = useParams();
   const navigate = useNavigate();
-  const id = Number(params.id);
+  const problemId = Number(params.id);
   const { token, user } = useAuth();
 
   // Problem detail
@@ -24,12 +24,7 @@ export default function ProblemDetailPage() {
   const [likeLoading, setLikeLoading] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
   const [voteDone, setVoteDone] = useState<boolean>(false);
-  const [voteChoice, setVoteChoice] = useState<OneShot>(null);
-  const voteLockRef = useRef<boolean>(false);
-  const VOTE_KEY = useMemo(
-    () => (user ? `vote-once:problem:${id}:user:${user.id}` : ''),
-    [id, user]
-  );
+  const [voteChoice, setVoteChoice] = useState<vote>(null);
 
   // Hints toggle
   const [showHints, setShowHints] = useState(false);
@@ -38,9 +33,11 @@ export default function ProblemDetailPage() {
   const [flagInput, setFlagInput] = useState('');
   const [flagSubmitting, setFlagSubmitting] = useState(false);
   const [flagResult, setFlagResult] = useState<{ correct: boolean; message: string; score?: number } | null>(null);
+  const [problemSolved, setProblemSolved] = useState(false);
 
   // Terminal toggle
   const [terminalOpen, setTerminalOpen] = useState(false);
+  const [ip, setIP] = useState<string | null>(null);
 
   // Session control
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -48,7 +45,8 @@ export default function ProblemDetailPage() {
   const [launching, setLaunching] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
 
-  const statusToClasses = (status: SessionStatus | null | undefined) => {
+  const statusToClasses = (status: SessionStatus | null | undefined, solved: boolean = false) => {
+    if (solved) return 'bg-green-500 border-green-400';
     switch (status) {
       case 'Running':
         return 'bg-green-500 border-green-400';
@@ -58,42 +56,57 @@ export default function ProblemDetailPage() {
         return 'bg-neutral-500 border-neutral-400';
     }
   };
-  const statusLabel = (status: SessionStatus) => (status === 'Unknown' ? 'Unknown' : status);
+  const statusLabel = (status: SessionStatus, solved: boolean = false) => {
+    if (solved) return 'Solved';
+    return status === 'Unknown' ? 'Unknown' : status;
+  };
 
+  //Vote
   useEffect(() => {
     if (!problem || !user) return;
 
     const likedByMe = (problem as any)?.likedByMe;
     const dislikedByMe = (problem as any)?.dislikedByMe;
 
-    if (typeof likedByMe === 'boolean' || typeof dislikedByMe === 'boolean') {
-      if (likedByMe) {
-        setVoteDone(true);
-        setVoteChoice('like');
-        if (VOTE_KEY) localStorage.setItem(VOTE_KEY, 'L');
-      } else if (dislikedByMe) {
-        setVoteDone(true);
-        setVoteChoice('dislike');
-        if (VOTE_KEY) localStorage.setItem(VOTE_KEY, 'D');
-      } else {
-        setVoteDone(false);
-        setVoteChoice(null);
-        if (VOTE_KEY) localStorage.removeItem(VOTE_KEY);
-      }
+    if (likedByMe === true) {
+      setVoteChoice('like');
+    } else if (dislikedByMe === true) {
+      setVoteChoice('dislike');
+    } else {
+      setVoteChoice(null);
+    }
+    setVoteDone(false);
+  }, [problem, user]);
+
+  async function vote(choice: 'like' | 'dislike') {
+    if (!token || !user) {
+      setLikeError('You must be logged in to vote');
       return;
     }
+    setLikeLoading(true);
+    setLikeError(null);
+    try {
+      await voteProblem(user.id, choice === 'like', token);
 
-    if (VOTE_KEY) {
-      const stored = localStorage.getItem(VOTE_KEY);
-      if (stored === 'L') { setVoteDone(true); setVoteChoice('like'); }
-      else if (stored === 'D') { setVoteDone(true); setVoteChoice('dislike'); }
-      else { setVoteDone(false); setVoteChoice(null); }
+      const fresh = await getProblem(problemId);
+      const normalized: Problem = {
+        ...(fresh as Problem),
+        like: Number((fresh as any).like ?? (fresh as any).likes ?? 0),
+      };
+      setProblem(normalized);
+
+      setVoteChoice(choice);
+      setVoteDone(false);
+    } catch (e: any) {
+      setLikeError(e?.message || 'Failed to vote');
+    } finally {
+      setLikeLoading(false);
     }
-  }, [problem, user, VOTE_KEY]);
-
+  }
+  
   // โหลดรายละเอียดโจทย์
   useEffect(() => {
-    if (!id || Number.isNaN(id)) {
+    if (!problemId || Number.isNaN(problemId)) {
       setError('Invalid problem id');
       setLoading(false);
       return;
@@ -102,7 +115,7 @@ export default function ProblemDetailPage() {
     setLoading(true);
     setError(null);
 
-    getProblem(id)
+    getProblem(problemId)
       .then((data: any) => {
         if (cancelled) return;
         const normalized: Problem = {
@@ -121,32 +134,34 @@ export default function ProblemDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [problemId]);
 
   // หา session ที่ยังเปิดอยู่ แล้วเริ่ม polling
   useEffect(() => {
-    if (!user || !token || !id) return;
+    if (!user || !token || !problemId) return;
     let cancelled = false;
 
     async function setupSession() {
       setSessionId(null);
       setSessionStatus('Unknown');
       setTerminalOpen(false);
+
       try {
-        const open = await getOpenSessionStatus(id, user.id, token);
+        const open = await getOpenSessionStatus(problemId, user.id, token);
         if (cancelled) return;
 
-        if (open && open.session && open.session.id) {
+        if (open && open.session && open.session.id && open.ip) {
           setSessionId(open.session.id);
-          setSessionStatus(open.status);
           setTerminalOpen(open.status === 'Running');
+          setIP(open.ip);
           startPolling(open.session.id);
         } else {
           setSessionId(null);
-          setSessionStatus('Unknown');
           setTerminalOpen(false);
         }
-      } catch {
+        setSessionStatus(open.status ?? 'Unknown');
+        
+      } catch (error) {
         if (!cancelled) {
           setSessionStatus('Unknown');
           setTerminalOpen(false);
@@ -155,11 +170,12 @@ export default function ProblemDetailPage() {
     }
 
     setupSession();
+
     return () => {
       cancelled = true;
       stopPolling();
     };
-  }, [id, token, user]);
+  }, [problemId, token, user]);
 
   // Polling helpers
   function startPolling(sid: string) {
@@ -167,6 +183,7 @@ export default function ProblemDetailPage() {
     pollTimerRef.current = window.setInterval(() => pollOnce(sid), 5000);
     void pollOnce(sid);
   }
+
   function stopPolling() {
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
@@ -179,11 +196,20 @@ export default function ProblemDetailPage() {
     if (!token) return;
     try {
       const result = await getSessionStatus(sid, token);
-      const status = (result as any).status ?? 'Unknown';
+      const status = result.status;
       setSessionStatus(status);
       setTerminalOpen(status === 'Running');
+      if (result.ip_address) 
+        setIP(result.ip_address);
 
-      if (['Stopped', 'Failed', 'Terminated'].includes(status)) stopPolling();
+      // Stop polling at terminal states
+      if (status === undefined || ['Error', 'Terminated'].includes(status)) {
+        stopPolling();
+        if (status === 'Terminated') {
+          setSessionId(null);
+          setIP(null);
+        }
+      }
     } catch {
       setSessionStatus('Unknown');
       setTerminalOpen(false);
@@ -195,57 +221,40 @@ export default function ProblemDetailPage() {
     if (!user || !token) return;
     setLaunching(true);
     try {
-      const existing = await getOpenSessionStatus(id, user.id, token);
-      if (existing?.session?.id) {
+      const existing = await getOpenSessionStatus(problemId, user.id, token);
+      if (existing && existing.session && existing.session.id) {
         setSessionId(existing.session.id);
         setSessionStatus(existing.status);
         setTerminalOpen(existing.status === 'Running');
+        setIP(existing.ip);
         startPolling(existing.session.id);
         return;
       }
 
-      const session = await launchSession(String(user.id), String(id), token);
+      const session = await launchSession(user.id, problemId, token);
       setSessionId(session.id);
-      setSessionStatus((session as any).status ?? 'Pending');
+      setSessionStatus(session.status);
       startPolling(session.id);
     } catch {
-      setSessionStatus('Unknown');
+      setSessionStatus('Error');
     } finally {
       setLaunching(false);
     }
   }
 
-  async function handleOneShotVote(choice: 'like' | 'dislike') {
-    if (!token) {
-      setLikeError('You must be logged in to vote');
-      return;
-    }
-    if (voteDone || voteLockRef.current) return;
-
-    voteLockRef.current = true;
-    setLikeLoading(true);
-    setLikeError(null);
-
-    const delta = choice === 'like' ? +1 : -1;
-
-    setVoteChoice(choice);
-    setVoteDone(true);
-    setProblem(prev => prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) + delta) } : prev);
-    window.dispatchEvent(new CustomEvent('problem:voted', { detail: { problemId: id, delta } }));
-    if (VOTE_KEY) localStorage.setItem(VOTE_KEY, choice === 'like' ? 'L' : 'D');
-
+  // Stop a session
+  async function onStop() {
+    if (!sessionId || !token) return;
+    setLaunching(true);
     try {
-      await voteProblem(id, choice === 'like', token);
-    } catch (e: any) {
-      setLikeError(e?.message || 'Failed to vote');
-      setVoteChoice(null);
-      setVoteDone(false);
-      setProblem(prev => prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) - delta) } : prev);
-      window.dispatchEvent(new CustomEvent('problem:voted', { detail: { problemId: id, delta: -delta } }));
-      if (VOTE_KEY) localStorage.removeItem(VOTE_KEY);
+      await stopSession(sessionId, token);
+      setSessionStatus('Terminated');
+      setTerminalOpen(false);
+      stopPolling();
+    } catch (error) {
+      console.error('Failed to stop session:', error);
     } finally {
-      setLikeLoading(false);
-      voteLockRef.current = false;
+      setLaunching(false);
     }
   }
 
@@ -255,16 +264,23 @@ export default function ProblemDetailPage() {
 
     setFlagSubmitting(true);
     setFlagResult(null);
-    if (!id) {
-      setFlagResult({ correct: false, message: 'No active session. Please launch server first.' });
-      return;
+    if (!sessionId) {
+        setFlagResult({ correct: false, message: 'No active session. Please launch server first.' });
+        setFlagSubmitting(false);
+        return;
     }
     try {
-      const existing = await getOpenSessionStatus(id, user!.id, token);
-      const result = await submitFlag(Number(existing!.session.id), flagInput.trim(), token);
+      const result = await submitFlag(Number(sessionId), flagInput.trim(), token);
       setFlagResult(result);
       if (result.correct) {
         setFlagInput('');
+        // When flag is correct: hide terminal, clear status, stop polling
+        setTerminalOpen(false);
+        setSessionStatus('Terminated');
+        setSessionId(null);
+        setIP(null);
+        setProblemSolved(true);
+        stopPolling();
       }
     } catch (e: any) {
       setFlagResult({ correct: false, message: e.message || 'Submission failed' });
@@ -277,34 +293,28 @@ export default function ProblemDetailPage() {
     problemId: number,
     userId: string | number,
     token?: string
-  ): Promise<{ session: SessionItem; status: SessionStatus } | null> {
+  ): Promise<{ session: SessionItem; status: SessionStatus; ip: string } | null> {
     if (!token || !problemId || userId === undefined || userId === null) return null;
 
     const resp = await getSession(token);
-    if (!Array.isArray(resp) || resp.length === 0) return null;
+    if (!resp) return null;
 
-    const list: SessionItem[] = resp.map((s: any) => ({
-      id: String(s.id ?? s.session_id ?? ''),
-      user_id: s.userId ?? s.user_id,
-      problem_id: Number(s.problemId ?? s.problem_id),
-      status: (s.status ?? 'Unknown') as SessionStatus,
-    }));
+    // normalize fields to camelCase (compatible with SessionItem)
+    const session: SessionItem = {
+      id: resp.id,
+      user_id: user.id,
+      problem_id: problemId,
+      status: resp.status,
+    }
 
-    const matches = list.filter(
-      (s) =>
-        String(s.user_id) === String(userId) &&
-        Number(s.problem_id) === Number(problemId) &&
-        ['Running', 'Pending'].includes(s.status ?? 'Unknown')
-    );
-    if (matches.length === 0) return null;
+    if (session.status !== "Pending" && !resp.ip_address) {
+      throw new Error('Session has no IP address');
+    }
 
-    const pick = matches[0];
-    if (!pick?.id) return null;
+    const statusResp = await getSessionStatus(session.id, token);
+    const status = statusResp.status ?? 'Unknown';
 
-    const statusResp = await getSessionStatus(pick.id, token);
-    const status = (statusResp as any)?.status ?? 'Unknown';
-
-    return { session: pick, status };
+    return { session, status, ip: resp.ip_address };
   }
 
   return (
@@ -360,27 +370,58 @@ export default function ProblemDetailPage() {
               <div className="flex items-center gap-3">
                 {/* Status pill */}
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-800 bg-neutral-900">
-                  <span className={`inline-block w-3 h-3 rounded-full border ${statusToClasses(sessionStatus)}`} />
-                  <span className="text-sm text-neutral-300">{statusLabel(sessionStatus)}</span>
-                  {sessionId && <span className="text-xs text-neutral-500 ml-2">#{sessionId.slice(0, 8)}</span>}
+                  <span className={`inline-block w-3 h-3 rounded-full border ${statusToClasses(sessionStatus, problemSolved)}`} />
+                  <span className="text-sm text-neutral-300">{statusLabel(sessionStatus, problemSolved)}</span>
+                  {sessionId && !problemSolved && <span className="text-xs text-neutral-500 ml-2">#{sessionId}</span>}
                 </div>
 
-                {/* Launch button */}
-                <button
-                  onClick={onLaunch}
-                  disabled={launching}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
-                    launching ? 'bg-neutral-800 text-neutral-400 cursor-wait' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                  }`}
-                  title="Start a server session"
-                >
-                  🚀 {launching ? 'Launching...' : 'Launch Server'}
-                </button>
+                {/* Launch/Stop button */}
+                {problemSolved ? (
+                  <button
+                    disabled={true}
+                    className="px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 bg-green-600 text-white cursor-not-allowed"
+                    title="Problem solved! Great job!"
+                  >
+                    ✅ Problem Solved
+                  </button>
+                ) : sessionStatus === 'Pending' || sessionStatus === 'Running' || sessionStatus === 'Error' ? (
+                  <button
+                    onClick={onStop}
+                    disabled={launching || sessionStatus === 'Pending'}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
+                      launching || sessionStatus === 'Pending'
+                        ? 'bg-neutral-800 text-neutral-400 cursor-not-allowed' 
+                        : 'bg-red-500 text-white hover:bg-red-400'
+                    }`}
+                    title={sessionStatus === 'Pending' ? 'Session is starting, please wait' : 'Stop the server session'}
+                  >
+                    🛑 {launching ? 'Stopping...' : sessionStatus === 'Pending' ? 'Starting...' : 'Stop Server'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={onLaunch}
+                    disabled={launching}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
+                      launching ? 'bg-neutral-800 text-neutral-400 cursor-wait' : 'bg-yellow-500 text-black hover:bg-yellow-400'
+                    }`}
+                    title="Start a server session"
+                  >
+                    🚀 {launching ? 'Launching...' : 'Launch Server'}
+                  </button>
+                )}
 
                 {/* Terminal button */}
                 <button
                   onClick={() => setTerminalOpen(!terminalOpen)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white`}
+                  disabled={sessionStatus !== 'Running'}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
+                    sessionStatus !== 'Running'
+                      ? 'bg-neutral-800 text-neutral-400 cursor-not-allowed border border-neutral-700'
+                      : terminalOpen
+                      ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
+                      : 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
+                  }`}
+                  title={sessionStatus !== 'Running' ? 'Terminal only available when server is running' : ''}
                 >
                   💻 {terminalOpen ? 'Hide Terminal' : 'Open Terminal'}
                 </button>
@@ -404,7 +445,7 @@ export default function ProblemDetailPage() {
                   </button>
                 </div>
                 <div style={{ height: '400px' }}>
-                  <Xterm host="http://54.87.224.163:1234" />
+                  <Xterm host={`http://${ip}:1234`} />
                 </div>
               </div>
             )}
@@ -473,16 +514,16 @@ export default function ProblemDetailPage() {
                         type="text"
                         value={flagInput}
                         onChange={(e) => setFlagInput(e.target.value)}
-                        placeholder="flag{your_flag_here}"
+                        placeholder={problemSolved ? "Problem already solved!" : "flag{your_flag_here}"}
                         className="flex-1 px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:border-yellow-500 focus:outline-none"
-                        disabled={flagSubmitting}
+                        disabled={flagSubmitting || problemSolved}
                       />
                       <button
                         type="submit"
-                        disabled={flagSubmitting || !flagInput.trim()}
+                        disabled={flagSubmitting || !flagInput.trim() || problemSolved}
                         className="px-6 py-2 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        {flagSubmitting ? 'Submitting...' : 'Submit'}
+                        {problemSolved ? 'Solved' : flagSubmitting ? 'Submitting...' : 'Submit'}
                       </button>
                     </div>
 
@@ -513,44 +554,38 @@ export default function ProblemDetailPage() {
                   <h3 className="font-semibold mb-4">Feedback</h3>
                   <div className="flex items-center gap-3">
                     <button
-                      disabled={likeLoading || voteDone}
-                      onClick={() => handleOneShotVote('like')}
+                      disabled={likeLoading}
+                      onClick={() => vote('like')}
                       className={`px-4 py-2 rounded-lg border transition-all inline-flex items-center gap-2
-                        ${
-                          voteDone && voteChoice === 'like'
-                            ? 'bg-green-600/20 border-green-600/40 text-green-300 cursor-not-allowed'
-                            : voteDone
-                              ? 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed'
-                              : likeLoading
-                                ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
-                                : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                        ${likeLoading
+                          ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
+                          : voteChoice === 'like'
+                            ? 'bg-green-600/20 border-green-600/40 text-green-300'
+                            : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
                         }`}
-                      title={voteDone ? 'You already voted' : 'Like this problem'}
+                      title="Like this problem"
                     >
                       👍 Like
                     </button>
 
                     <button
-                      disabled={likeLoading || voteDone}
-                      onClick={() => handleOneShotVote('dislike')}
+                      disabled={likeLoading}
+                      onClick={() => vote('dislike')}
                       className={`px-4 py-2 rounded-lg border transition-all inline-flex items-center gap-2
-                        ${
-                          voteDone && voteChoice === 'dislike'
-                            ? 'bg-red-600/20 border-red-600/40 text-red-300 cursor-not-allowed'
-                            : voteDone
-                              ? 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed'
-                              : likeLoading
-                                ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
-                                : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                        ${likeLoading
+                          ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
+                          : voteChoice === 'dislike'
+                            ? 'bg-red-600/20 border-red-600/40 text-red-300'
+                            : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
                         }`}
-                      title={voteDone ? 'You already voted' : 'Dislike this problem'}
+                      title="Dislike this problem"
                     >
                       👎 Dislike
                     </button>
 
                     {likeError && <span className="text-sm text-red-400">{likeError}</span>}
                   </div>
-                  <p className="mt-3 text-sm text-neutral-400">โหวตได้เพียงครั้งเดียวต่อผู้ใช้/โจทย์</p>
+                  <p className="mt-3 text-sm text-neutral-400">สามารถโหวตให้กับโจทย์ได้</p>
                 </div>
               </div>
             </div>
