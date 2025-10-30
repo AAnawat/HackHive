@@ -7,7 +7,7 @@ import type { Problem, SessionStatus, SessionItem } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-type OneShot = 'like' | 'dislike' | null;
+type vote = 'like' | 'dislike' | null;
 
 export default function ProblemDetailPage() {
   const params = useParams();
@@ -24,12 +24,7 @@ export default function ProblemDetailPage() {
   const [likeLoading, setLikeLoading] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
   const [voteDone, setVoteDone] = useState<boolean>(false);
-  const [voteChoice, setVoteChoice] = useState<OneShot>(null);
-  const voteLockRef = useRef<boolean>(false);
-  const VOTE_KEY = useMemo(
-    () => (user ? `vote-once:problem:${problemId}:user:${user.id}` : ''),
-    [problemId, user]
-  );
+  const [voteChoice, setVoteChoice] = useState<vote>(null);
 
   // Hints toggle
   const [showHints, setShowHints] = useState(false);
@@ -38,6 +33,7 @@ export default function ProblemDetailPage() {
   const [flagInput, setFlagInput] = useState('');
   const [flagSubmitting, setFlagSubmitting] = useState(false);
   const [flagResult, setFlagResult] = useState<{ correct: boolean; message: string; score?: number } | null>(null);
+  const [problemSolved, setProblemSolved] = useState(false);
 
   // Terminal toggle
   const [terminalOpen, setTerminalOpen] = useState(false);
@@ -49,7 +45,8 @@ export default function ProblemDetailPage() {
   const [launching, setLaunching] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
 
-  const statusToClasses = (status: SessionStatus | null | undefined) => {
+  const statusToClasses = (status: SessionStatus | null | undefined, solved: boolean = false) => {
+    if (solved) return 'bg-green-500 border-green-400';
     switch (status) {
       case 'Running':
         return 'bg-green-500 border-green-400';
@@ -59,39 +56,54 @@ export default function ProblemDetailPage() {
         return 'bg-neutral-500 border-neutral-400';
     }
   };
-  const statusLabel = (status: SessionStatus) => (status === 'Unknown' ? 'Unknown' : status);
+  const statusLabel = (status: SessionStatus, solved: boolean = false) => {
+    if (solved) return 'Solved';
+    return status === 'Unknown' ? 'Unknown' : status;
+  };
 
+  //Vote
   useEffect(() => {
     if (!problem || !user) return;
 
     const likedByMe = (problem as any)?.likedByMe;
     const dislikedByMe = (problem as any)?.dislikedByMe;
 
-    if (typeof likedByMe === 'boolean' || typeof dislikedByMe === 'boolean') {
-      if (likedByMe) {
-        setVoteDone(true);
-        setVoteChoice('like');
-        if (VOTE_KEY) localStorage.setItem(VOTE_KEY, 'L');
-      } else if (dislikedByMe) {
-        setVoteDone(true);
-        setVoteChoice('dislike');
-        if (VOTE_KEY) localStorage.setItem(VOTE_KEY, 'D');
-      } else {
-        setVoteDone(false);
-        setVoteChoice(null);
-        if (VOTE_KEY) localStorage.removeItem(VOTE_KEY);
-      }
+    if (likedByMe === true) {
+      setVoteChoice('like');
+    } else if (dislikedByMe === true) {
+      setVoteChoice('dislike');
+    } else {
+      setVoteChoice(null);
+    }
+    setVoteDone(false);
+  }, [problem, user]);
+
+  async function vote(choice: 'like' | 'dislike') {
+    if (!token || !user) {
+      setLikeError('You must be logged in to vote');
       return;
     }
+    setLikeLoading(true);
+    setLikeError(null);
+    try {
+      await voteProblem(user.id, choice === 'like', token);
 
-    if (VOTE_KEY) {
-      const stored = localStorage.getItem(VOTE_KEY);
-      if (stored === 'L') { setVoteDone(true); setVoteChoice('like'); }
-      else if (stored === 'D') { setVoteDone(true); setVoteChoice('dislike'); }
-      else { setVoteDone(false); setVoteChoice(null); }
+      const fresh = await getProblem(problemId);
+      const normalized: Problem = {
+        ...(fresh as Problem),
+        like: Number((fresh as any).like ?? (fresh as any).likes ?? 0),
+      };
+      setProblem(normalized);
+
+      setVoteChoice(choice);
+      setVoteDone(false);
+    } catch (e: any) {
+      setLikeError(e?.message || 'Failed to vote');
+    } finally {
+      setLikeLoading(false);
     }
-  }, [problem, user, VOTE_KEY]);
-
+  }
+  
   // โหลดรายละเอียดโจทย์
   useEffect(() => {
     if (!problemId || Number.isNaN(problemId)) {
@@ -198,8 +210,6 @@ export default function ProblemDetailPage() {
           setIP(null);
         }
       }
-
-
     } catch {
       setSessionStatus('Unknown');
       setTerminalOpen(false);
@@ -248,48 +258,15 @@ export default function ProblemDetailPage() {
     }
   }
 
-  async function handleOneShotVote(choice: 'like' | 'dislike') {
-    if (!token) {
-      setLikeError('You must be logged in to vote');
-      return;
-    }
-    if (voteDone || voteLockRef.current) return;
-
-    voteLockRef.current = true;
-    setLikeLoading(true);
-    setLikeError(null);
-
-    const delta = choice === 'like' ? +1 : -1;
-
-    setVoteChoice(choice);
-    setVoteDone(true);
-    setProblem(prev => prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) + delta) } : prev);
-    window.dispatchEvent(new CustomEvent('problem:voted', { detail: { problemId: problemId, delta } }));
-    if (VOTE_KEY) localStorage.setItem(VOTE_KEY, choice === 'like' ? 'L' : 'D');
-
-    try {
-      await voteProblem(problemId, choice === 'like', token);
-    } catch (e: any) {
-      setLikeError(e?.message || 'Failed to vote');
-      setVoteChoice(null);
-      setVoteDone(false);
-      setProblem(prev => prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) - delta) } : prev);
-      window.dispatchEvent(new CustomEvent('problem:voted', { detail: { problemId: problemId, delta: -delta } }));
-      if (VOTE_KEY) localStorage.removeItem(VOTE_KEY);
-    } finally {
-      setLikeLoading(false);
-      voteLockRef.current = false;
-    }
-  }
-
   async function handleSubmitFlag(e: React.FormEvent) {
     e.preventDefault();
     if (!flagInput.trim() || !token) return;
 
     setFlagSubmitting(true);
     setFlagResult(null);
-    if (!problemId) {
+    if (!sessionId) {
         setFlagResult({ correct: false, message: 'No active session. Please launch server first.' });
+        setFlagSubmitting(false);
         return;
     }
     try {
@@ -297,6 +274,12 @@ export default function ProblemDetailPage() {
       setFlagResult(result);
       if (result.correct) {
         setFlagInput('');
+        // When flag is correct: hide terminal, clear status, stop polling
+        setTerminalOpen(false);
+        setSessionStatus('Terminated');
+        setSessionId(null);
+        setIP(null);
+        setProblemSolved(true);
         stopPolling();
       }
     } catch (e: any) {
@@ -315,7 +298,7 @@ export default function ProblemDetailPage() {
 
     const resp = await getSession(token);
     if (!resp) return null;
-    
+
     // normalize fields to camelCase (compatible with SessionItem)
     const session: SessionItem = {
       id: resp.id,
@@ -387,13 +370,21 @@ export default function ProblemDetailPage() {
               <div className="flex items-center gap-3">
                 {/* Status pill */}
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-800 bg-neutral-900">
-                  <span className={`inline-block w-3 h-3 rounded-full border ${statusToClasses(sessionStatus)}`} />
-                  <span className="text-sm text-neutral-300">{statusLabel(sessionStatus)}</span>
-                  {sessionId && <span className="text-xs text-neutral-500 ml-2">#{sessionId}</span>}
+                  <span className={`inline-block w-3 h-3 rounded-full border ${statusToClasses(sessionStatus, problemSolved)}`} />
+                  <span className="text-sm text-neutral-300">{statusLabel(sessionStatus, problemSolved)}</span>
+                  {sessionId && !problemSolved && <span className="text-xs text-neutral-500 ml-2">#{sessionId}</span>}
                 </div>
 
                 {/* Launch/Stop button */}
-                {sessionStatus === 'Pending' || sessionStatus === 'Running' || sessionStatus === 'Error' ? (
+                {problemSolved ? (
+                  <button
+                    disabled={true}
+                    className="px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 bg-green-600 text-white cursor-not-allowed"
+                    title="Problem solved! Great job!"
+                  >
+                    ✅ Problem Solved
+                  </button>
+                ) : sessionStatus === 'Pending' || sessionStatus === 'Running' || sessionStatus === 'Error' ? (
                   <button
                     onClick={onStop}
                     disabled={launching || sessionStatus === 'Pending'}
@@ -523,16 +514,16 @@ export default function ProblemDetailPage() {
                         type="text"
                         value={flagInput}
                         onChange={(e) => setFlagInput(e.target.value)}
-                        placeholder="flag{your_flag_here}"
+                        placeholder={problemSolved ? "Problem already solved!" : "flag{your_flag_here}"}
                         className="flex-1 px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:border-yellow-500 focus:outline-none"
-                        disabled={flagSubmitting}
+                        disabled={flagSubmitting || problemSolved}
                       />
                       <button
                         type="submit"
-                        disabled={flagSubmitting || !flagInput.trim()}
+                        disabled={flagSubmitting || !flagInput.trim() || problemSolved}
                         className="px-6 py-2 rounded-lg bg-yellow-500 text-black font-semibold hover:bg-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        {flagSubmitting ? 'Submitting...' : 'Submit'}
+                        {problemSolved ? 'Solved' : flagSubmitting ? 'Submitting...' : 'Submit'}
                       </button>
                     </div>
 
@@ -563,44 +554,38 @@ export default function ProblemDetailPage() {
                   <h3 className="font-semibold mb-4">Feedback</h3>
                   <div className="flex items-center gap-3">
                     <button
-                      disabled={likeLoading || voteDone}
-                      onClick={() => handleOneShotVote('like')}
+                      disabled={likeLoading}
+                      onClick={() => vote('like')}
                       className={`px-4 py-2 rounded-lg border transition-all inline-flex items-center gap-2
-                        ${
-                          voteDone && voteChoice === 'like'
-                            ? 'bg-green-600/20 border-green-600/40 text-green-300 cursor-not-allowed'
-                            : voteDone
-                              ? 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed'
-                              : likeLoading
-                                ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
-                                : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                        ${likeLoading
+                          ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
+                          : voteChoice === 'like'
+                            ? 'bg-green-600/20 border-green-600/40 text-green-300'
+                            : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
                         }`}
-                      title={voteDone ? 'You already voted' : 'Like this problem'}
+                      title="Like this problem"
                     >
                       👍 Like
                     </button>
 
                     <button
-                      disabled={likeLoading || voteDone}
-                      onClick={() => handleOneShotVote('dislike')}
+                      disabled={likeLoading}
+                      onClick={() => vote('dislike')}
                       className={`px-4 py-2 rounded-lg border transition-all inline-flex items-center gap-2
-                        ${
-                          voteDone && voteChoice === 'dislike'
-                            ? 'bg-red-600/20 border-red-600/40 text-red-300 cursor-not-allowed'
-                            : voteDone
-                              ? 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed'
-                              : likeLoading
-                                ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
-                                : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                        ${likeLoading
+                          ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
+                          : voteChoice === 'dislike'
+                            ? 'bg-red-600/20 border-red-600/40 text-red-300'
+                            : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
                         }`}
-                      title={voteDone ? 'You already voted' : 'Dislike this problem'}
+                      title="Dislike this problem"
                     >
                       👎 Dislike
                     </button>
 
                     {likeError && <span className="text-sm text-red-400">{likeError}</span>}
                   </div>
-                  <p className="mt-3 text-sm text-neutral-400">โหวตได้เพียงครั้งเดียวต่อผู้ใช้/โจทย์</p>
+                  <p className="mt-3 text-sm text-neutral-400">สามารถโหวตให้กับโจทย์ได้</p>
                 </div>
               </div>
             </div>
