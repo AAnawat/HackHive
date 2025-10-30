@@ -1,0 +1,1 @@
+ALTER TABLE "users" ALTER COLUMN "pfp_path" SET DEFAULT 'https://hackhive-storage.s3.us-east-1.amazonaws.com/profile-pictures/default.png';

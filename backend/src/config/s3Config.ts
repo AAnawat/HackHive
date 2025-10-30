@@ -1,3 +1,3 @@
 export default {
-    bucket: "hackhive"
+    bucket: "hackhive-storage"
 }
