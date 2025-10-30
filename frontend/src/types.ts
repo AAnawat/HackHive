@@ -46,7 +46,7 @@ export type SessionItem = {
   status: SessionStatus;
 };
 
-export type SessionStatus = 'Unknown' | 'Pending' | 'Running';
+export type SessionStatus = 'Unknown' | 'Pending' | 'Running' | 'Error' | 'Terminated';
 
 export type SessionResp = Session;
 

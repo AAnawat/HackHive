@@ -55,8 +55,8 @@ export async function getProblem(problemId: number) {
   return res.json();
 }
 
-export function voteProblem(userId: number, isLiked: boolean, token: string) {
-  return request(`/problems/${userId}/vote`, {
+export function voteProblem(problemId: number, isLiked: boolean, token: string) {
+  return request(`/problems/${problemId}/vote`, {
     method: 'POST',
     body: JSON.stringify({ isLiked }),
     token,
@@ -64,13 +64,26 @@ export function voteProblem(userId: number, isLiked: boolean, token: string) {
 }
 
 export async function getSession(token?: string): Promise<SessionResp> {
-  return request('/sessions', {
-    method: 'GET',
-    token,
-  });
+  try {
+    
+    const res = await request('/sessions', {
+      method: 'GET',
+      token,
+    });
+    
+    if (!res) {
+      throw new Error('Failed to fetch session');
+    }
+
+    return res as SessionResp;
+
+  } catch (error) {
+    console.log("Error fetching session:", error);
+    return undefined
+  }
 }
 
-export async function launchSession(userId: string, problemId: string, token?: string): Promise<LaunchSessionResp> {
+export async function launchSession(userId: number, problemId: number, token?: string): Promise<LaunchSessionResp> {
   const res = await fetch(`${API_BASE}/sessions/launch`, {
     method: 'POST',
     headers: {
@@ -79,7 +92,6 @@ export async function launchSession(userId: string, problemId: string, token?: s
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ userId, problemId }),
-    credentials: 'include',
     cache: 'no-store',
   });
 
@@ -93,47 +105,62 @@ export async function launchSession(userId: string, problemId: string, token?: s
 }
 
 export async function getSessionStatus(sessionId: number | string, token?: string): Promise<SessionResp> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    cache: 'no-store',
-  });
-  console.log('getSessionStatus response:', res);
-  if (!res.ok) {
-    if (res.status === 204) {
-      return {
-        id: String(sessionId),
-        user_id: 0,
-        problem_id: 0,
-        flag: null,
-        status: 'Pending',
-        task_arn: null,
-        ip_address: null,
-        started_at: null,
-        ended_at: null,
-      };
+  try {
+    
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'no-store',
+    });
+  
+    if (!res.ok) {
+      if (res.status === 204) {
+        return {
+          id: String(sessionId),
+          user_id: 0,
+          problem_id: 0,
+          flag: null,
+          status: 'Pending',
+          task_arn: null,
+          ip_address: null,
+          started_at: null,
+          ended_at: null,
+        };
+      }
+      const detail = await res.text().catch(() => '');
+      throw new Error(`Status check failed: ${res.status}${detail ? ` - ${detail}` : ''}`);
     }
-    const detail = await res.text().catch(() => '');
-    throw new Error(`Status check failed: ${res.status}${detail ? ` - ${detail}` : ''}`);
-  }
+  
+    const data = await res.json();
+    if (data && data.status === 'Active') {
+      data.status = 'Running';
+    }
+  
+    return data as SessionResp;
 
-  const data = await res.json();
-  if (data && data.status === 'Active') {
-    data.status = 'Running';
+  } catch (error) {
+    console.log(error);
+    return undefined
   }
-  return data as SessionResp;
 }
 
+
+export async function stopSession(sessionId: number | string, token?: string): Promise<void> {
+  await request(`/sessions/${sessionId}/stop`, {
+    method: 'DELETE',
+    token,
+  });
+}
 
 export function submitFlag(
   session_id: number,
   flag: string,
   token: string
 ): Promise<{ correct: boolean; message: string; score?: number }> {
-  return request(`/problems/${session_id}/submit`, {
+  return request(`/sessions/${session_id}/submit`, {
     method: 'POST',
     body: JSON.stringify({ flag }),
     token,

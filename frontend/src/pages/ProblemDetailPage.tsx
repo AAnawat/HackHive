@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '../layouts/AppLayout';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Xterm from '../components/xterm';
-import { getProblem, voteProblem, submitFlag, getSession, launchSession, getSessionStatus } from '../api/client';
+import { getProblem, voteProblem, submitFlag, getSession, launchSession, getSessionStatus, stopSession } from '../api/client';
 import type { Problem, SessionStatus, SessionItem } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 export default function ProblemDetailPage() {
   const params = useParams();
   const navigate = useNavigate();
-  const id = Number(params.id);
+  const problemId = Number(params.id);
   const { token, user } = useAuth();
 
   // Problem detail
@@ -32,6 +32,7 @@ export default function ProblemDetailPage() {
 
   // Terminal toggle
   const [terminalOpen, setTerminalOpen] = useState(false);
+  const [ip, setIP] = useState<string | null>(null);
 
   // Session control
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export default function ProblemDetailPage() {
 
   // Load problem detail
   useEffect(() => {
-    if (!id || Number.isNaN(id)) {
+    if (!problemId || Number.isNaN(problemId)) {
       setError('Invalid problem id');
       setLoading(false);
       return;
@@ -64,7 +65,7 @@ export default function ProblemDetailPage() {
     setLoading(true);
     setError(null);
 
-    getProblem(id)
+    getProblem(problemId)
       .then((data: any) => {
         if (cancelled) return;
         const normalized: Problem = {
@@ -83,32 +84,34 @@ export default function ProblemDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [problemId]);
 
   // Find an open session (Running/Pending) for this problem+user and start polling
   useEffect(() => {
-    if (!user || !token || !id) return;
+    if (!user || !token || !problemId) return;
     let cancelled = false;
 
     async function setupSession() {
       setSessionId(null);
       setSessionStatus('Unknown');
       setTerminalOpen(false);
+
       try {
-        const open = await getOpenSessionStatus(id, user.id, token);
+        const open = await getOpenSessionStatus(problemId, user.id, token);
         if (cancelled) return;
 
-        if (open && open.session && open.session.id) {
+        if (open && open.session && open.session.id && open.ip) {
           setSessionId(open.session.id);
-          setSessionStatus(open.status);
           setTerminalOpen(open.status === 'Running');
+          setIP(open.ip);
           startPolling(open.session.id);
         } else {
           setSessionId(null);
-          setSessionStatus('Unknown');
           setTerminalOpen(false);
         }
-      } catch {
+        setSessionStatus(open.status ?? 'Unknown');
+        
+      } catch (error) {
         if (!cancelled) {
           setSessionStatus('Unknown');
           setTerminalOpen(false);
@@ -117,11 +120,12 @@ export default function ProblemDetailPage() {
     }
 
     setupSession();
+
     return () => {
       cancelled = true;
       stopPolling();
     };
-  }, [id, token, user]);
+  }, [problemId, token, user]);
 
   // Polling helpers
   function startPolling(sid: string) {
@@ -129,6 +133,7 @@ export default function ProblemDetailPage() {
     pollTimerRef.current = window.setInterval(() => pollOnce(sid), 5000);
     void pollOnce(sid); // one immediate
   }
+
   function stopPolling() {
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
@@ -141,12 +146,22 @@ export default function ProblemDetailPage() {
     if (!token) return;
     try {
       const result = await getSessionStatus(sid, token);
-      const status = (result as any).status ?? 'Unknown';
+      const status = result.status;
       setSessionStatus(status);
       setTerminalOpen(status === 'Running');
+      if (result.ip_address) 
+        setIP(result.ip_address);
 
       // Stop polling at terminal states
-      if (['Stopped', 'Failed', 'Terminated'].includes(status)) stopPolling();
+      if (status === undefined || ['Error', 'Terminated'].includes(status)) {
+        stopPolling();
+        if (status === 'Terminated') {
+          setSessionId(null);
+          setIP(null);
+        }
+      }
+
+
     } catch {
       setSessionStatus('Unknown');
       setTerminalOpen(false);
@@ -158,21 +173,38 @@ export default function ProblemDetailPage() {
     if (!user || !token) return;
     setLaunching(true);
     try {
-      const existing = await getOpenSessionStatus(id, user.id, token);
-      if (existing?.session?.id) {
+      const existing = await getOpenSessionStatus(problemId, user.id, token);
+      if (existing && existing.session && existing.session.id) {
         setSessionId(existing.session.id);
         setSessionStatus(existing.status);
         setTerminalOpen(existing.status === 'Running');
+        setIP(existing.ip);
         startPolling(existing.session.id);
         return;
       }
 
-      const session = await launchSession(String(user.id), String(id), token);
+      const session = await launchSession(user.id, problemId, token);
       setSessionId(session.id);
-      setSessionStatus((session as any).status ?? 'Pending');
+      setSessionStatus(session.status);
       startPolling(session.id);
     } catch {
-      setSessionStatus('Unknown');
+      setSessionStatus('Error');
+    } finally {
+      setLaunching(false);
+    }
+  }
+
+  // Stop a session
+  async function onStop() {
+    if (!sessionId || !token) return;
+    setLaunching(true);
+    try {
+      await stopSession(sessionId, token);
+      setSessionStatus('Terminated');
+      setTerminalOpen(false);
+      stopPolling();
+    } catch (error) {
+      console.error('Failed to stop session:', error);
     } finally {
       setLaunching(false);
     }
@@ -186,7 +218,7 @@ export default function ProblemDetailPage() {
     setLikeLoading(true);
     setLikeError(null);
     try {
-      await voteProblem(id, isLiked, token);
+      await voteProblem(problemId, isLiked, token);
       setProblem((prev) =>
         prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) + (isLiked ? 1 : -1)) } : prev
       );
@@ -203,16 +235,16 @@ export default function ProblemDetailPage() {
 
     setFlagSubmitting(true);
     setFlagResult(null);
-    if (!id) {
+    if (!problemId) {
         setFlagResult({ correct: false, message: 'No active session. Please launch server first.' });
         return;
     }
     try {
-      const existing = await getOpenSessionStatus(id, user.id, token);
-      const result = await submitFlag(Number(existing.session.id), flagInput.trim(), token);
+      const result = await submitFlag(Number(sessionId), flagInput.trim(), token);
       setFlagResult(result);
       if (result.correct) {
         setFlagInput('');
+        stopPolling();
       }
     } catch (e: any) {
       setFlagResult({ correct: false, message: e.message || 'Submission failed' });
@@ -226,36 +258,28 @@ export default function ProblemDetailPage() {
     problemId: number,
     userId: string | number,
     token?: string
-  ): Promise<{ session: SessionItem; status: SessionStatus } | null> {
+  ): Promise<{ session: SessionItem; status: SessionStatus; ip: string } | null> {
     if (!token || !problemId || userId === undefined || userId === null) return null;
 
     const resp = await getSession(token);
-    if (!Array.isArray(resp) || resp.length === 0) return null;
-
+    if (!resp) return null;
+    
     // normalize fields to camelCase (compatible with SessionItem)
-    const list: SessionItem[] = resp.map((s: any) => ({
-      id: String(s.id ?? s.session_id ?? ''),
-      user_id: s.userId ?? s.user_id,
-      problem_id: Number(s.problemId ?? s.problem_id),
-      status: (s.status ?? 'Unknown') as SessionStatus,
-      // updatedAt: s.updatedAt ?? s.updated_at, // เผื่อจะใช้เรียงล่าสุดทีหลัง
-    }));
+    const session: SessionItem = {
+      id: resp.id,
+      user_id: user.id,
+      problem_id: problemId,
+      status: resp.status,
+    }
 
-    const matches = list.filter(
-      (s) =>
-        String(s.user_id) === String(userId) &&
-        Number(s.problem_id) === Number(problemId) &&
-        ['Running', 'Pending'].includes(s.status ?? 'Unknown')
-    );
-    if (matches.length === 0) return null;
+    if (session.status !== "Pending" && !resp.ip_address) {
+      throw new Error('Session has no IP address');
+    }
 
-    const pick = matches[0];
-    if (!pick?.id) return null;
+    const statusResp = await getSessionStatus(session.id, token);
+    const status = statusResp.status ?? 'Unknown';
 
-    const statusResp = await getSessionStatus(pick.id, token);
-    const status = (statusResp as any)?.status ?? 'Unknown';
-
-    return { session: pick, status };
+    return { session, status, ip: resp.ip_address };
   }
 
   return (
@@ -313,29 +337,48 @@ export default function ProblemDetailPage() {
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-800 bg-neutral-900">
                   <span className={`inline-block w-3 h-3 rounded-full border ${statusToClasses(sessionStatus)}`} />
                   <span className="text-sm text-neutral-300">{statusLabel(sessionStatus)}</span>
-                  {sessionId && <span className="text-xs text-neutral-500 ml-2">#{sessionId.slice(0, 8)}</span>}
+                  {sessionId && <span className="text-xs text-neutral-500 ml-2">#{sessionId}</span>}
                 </div>
 
-                {/* Launch button */}
-                <button
-                  onClick={onLaunch}
-                  disabled={launching}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
-                    launching ? 'bg-neutral-800 text-neutral-400 cursor-wait' : 'bg-yellow-500 text-black hover:bg-yellow-400'
-                  }`}
-                  title="Start a server session"
-                >
-                  🚀 {launching ? 'Launching...' : 'Launch Server'}
-                </button>
+                {/* Launch/Stop button */}
+                {sessionStatus === 'Pending' || sessionStatus === 'Running' || sessionStatus === 'Error' ? (
+                  <button
+                    onClick={onStop}
+                    disabled={launching || sessionStatus === 'Pending'}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
+                      launching || sessionStatus === 'Pending'
+                        ? 'bg-neutral-800 text-neutral-400 cursor-not-allowed' 
+                        : 'bg-red-500 text-white hover:bg-red-400'
+                    }`}
+                    title={sessionStatus === 'Pending' ? 'Session is starting, please wait' : 'Stop the server session'}
+                  >
+                    🛑 {launching ? 'Stopping...' : sessionStatus === 'Pending' ? 'Starting...' : 'Stop Server'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={onLaunch}
+                    disabled={launching}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
+                      launching ? 'bg-neutral-800 text-neutral-400 cursor-wait' : 'bg-yellow-500 text-black hover:bg-yellow-400'
+                    }`}
+                    title="Start a server session"
+                  >
+                    🚀 {launching ? 'Launching...' : 'Launch Server'}
+                  </button>
+                )}
 
                 {/* Terminal button */}
                 <button
                   onClick={() => setTerminalOpen(!terminalOpen)}
+                  disabled={sessionStatus !== 'Running'}
                   className={`px-4 py-2 rounded-lg font-semibold transition-all inline-flex items-center gap-2 ${
-                    terminalOpen
+                    sessionStatus !== 'Running'
+                      ? 'bg-neutral-800 text-neutral-400 cursor-not-allowed border border-neutral-700'
+                      : terminalOpen
                       ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
                       : 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white'
                   }`}
+                  title={sessionStatus !== 'Running' ? 'Terminal only available when server is running' : ''}
                 >
                   💻 {terminalOpen ? 'Hide Terminal' : 'Open Terminal'}
                 </button>
@@ -359,7 +402,7 @@ export default function ProblemDetailPage() {
                   </button>
                 </div>
                 <div style={{ height: '400px' }}>
-                  <Xterm host="http://54.87.224.163:1234" />
+                  <Xterm host={`http://${ip}:1234`} />
                 </div>
               </div>
             )}
