@@ -87,7 +87,7 @@ export default function ProblemsPage() {
     let cancelled = false;
     getProblemCategories()
       .then((cats) => {
-        if (!cancelled) setCategories(cats);
+        if (!cancelled) setCategories(Array.isArray(cats) ? cats : cats.categories || []);
       })
       .catch(() => {
         if (!cancelled) setCategories([]);
