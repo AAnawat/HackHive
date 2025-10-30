@@ -147,10 +147,13 @@ export default function ProblemDetailPage() {
         const open = await getOpenSessionStatus(problemId, user.id, token);
         if (cancelled) return;
 
-        if (open && open.session && open.session.id && open.ip) {
+        if (open.ip) {
+          setIP(open.ip);
+        }
+
+        if (open && open.session && open.session.id) {
           setSessionId(open.session.id);
           setTerminalOpen(open.status === 'Running');
-          setIP(open.ip);
           startPolling(open.session.id);
         } else {
           setSessionId(null);
@@ -241,6 +244,7 @@ export default function ProblemDetailPage() {
 
   // Stop a session
   async function onStop() {
+    console.log(sessionId, token);
     if (!sessionId || !token) return;
     setLaunching(true);
     try {
@@ -302,10 +306,6 @@ export default function ProblemDetailPage() {
       user_id: user.id,
       problem_id: problemId,
       status: resp.status,
-    }
-
-    if (session.status !== "Pending" && !resp.ip_address) {
-      throw new Error('Session has no IP address');
     }
 
     const statusResp = await getSessionStatus(session.id, token);

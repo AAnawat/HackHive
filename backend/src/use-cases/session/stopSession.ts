@@ -12,18 +12,29 @@ export default class StopSession {
 
 
     public async call(sessionId: number, reason: string): Promise<boolean> {
-        const session = await this.sessionDAO.get({ Id: sessionId });
-        if (session.length === 0) 
-            throw new Error("Session not found");
-
-        const stopContainer = await this.containerManager.deleteContainer(session[0].task_arn, reason);
-        if (!stopContainer) 
-            throw new Error("Failed to stop container");
-
-        const deleteResult = await this.sessionDAO.delete(sessionId);
-        if (!deleteResult) 
-            throw new Error("Failed to delete session");
-
-        return true;
+        try {
+            const session = await this.sessionDAO.get({ Id: sessionId });
+            if (session.length === 0) 
+                throw new Error("Session not found");
+    
+            const stopContainer = await this.containerManager.deleteContainer(session[0].task_arn, reason);
+            if (!stopContainer) 
+                throw new Error("Failed to stop container");
+    
+            const deleteResult = await this.sessionDAO.delete(sessionId);
+            if (!deleteResult) 
+                throw new Error("Failed to delete session");
+    
+            return true;
+        } catch (error) {
+            if (error instanceof Error) {
+                const errorMessage = error.message || "";
+                if (errorMessage.includes("Task can not be blank")) {
+                    await this.sessionDAO.delete(sessionId);
+                    return true;
+                }
+                throw new Error(error.message)
+            }
+        }
     }
 }

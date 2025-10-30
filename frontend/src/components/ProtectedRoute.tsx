@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
   message?: string;
 }
 
-export default function ProtectedRoute({ children, message }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 

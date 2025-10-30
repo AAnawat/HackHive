@@ -74,8 +74,6 @@ export default class SessionController {
 
         } catch (error) {
             if (error instanceof Error) {
-                const errorMessage = error.message || "";
-                if (errorMessage.includes("Task can not be blank")) throw new Error("Please wait until container is ready");
                 throw new Error(error.message)
             }
         }
