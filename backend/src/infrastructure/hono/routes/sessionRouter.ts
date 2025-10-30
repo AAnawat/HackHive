@@ -57,6 +57,8 @@ router.get('/:id', async (c) => {
         const session = await controller.get(token, sessionId);
         return c.json({
             id: session.id,
+            user_id: session.user_id,
+            problem_id: session.problem_id,
             status: session.status,
             task_arn: session.task_arn,
             ip_address: session.ip_address,

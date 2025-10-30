@@ -244,7 +244,6 @@ export default function ProblemDetailPage() {
 
   // Stop a session
   async function onStop() {
-    console.log(sessionId, token);
     if (!sessionId || !token) return;
     setLaunching(true);
     try {
@@ -297,7 +296,7 @@ export default function ProblemDetailPage() {
   ): Promise<{ session: SessionItem; status: SessionStatus; ip: string } | null> {
     if (!token || !problemId || userId === undefined || userId === null) return null;
 
-    const resp = await getSession(token);
+    const resp = await getSession(token, problemId);
     if (!resp) return null;
 
     // normalize fields to camelCase (compatible with SessionItem)

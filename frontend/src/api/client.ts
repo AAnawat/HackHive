@@ -63,16 +63,20 @@ export function voteProblem(problemId: number, isLiked: boolean, token: string) 
   });
 }
 
-export async function getSession(token?: string): Promise<SessionResp> {
+export async function getSession(token?: string, problemId?: number): Promise<SessionResp> {
   try {
-    
-    const res = await request('/sessions', {
+
+    const res: any = await request('/sessions', {
       method: 'GET',
       token,
     });
     
     if (!res) {
       throw new Error('Failed to fetch session');
+    }
+
+    if (res.problem_id !== problemId) {
+      throw new Error('No open session for this problem');
     }
 
     return res as SessionResp;
