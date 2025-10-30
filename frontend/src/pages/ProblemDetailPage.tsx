@@ -42,6 +42,7 @@ export default function ProblemDetailPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>('Unknown');
   const [launching, setLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
   const pollTimerRef = useRef<number | null>(null);
 
   const statusToClasses = (status: SessionStatus | null | undefined, solved: boolean = false) => {
@@ -174,6 +175,7 @@ export default function ProblemDetailPage() {
     return () => {
       cancelled = true;
       stopPolling();
+      setLaunchError(null); // Clear errors on cleanup
     };
   }, [problemId, token, user]);
 
@@ -220,7 +222,10 @@ export default function ProblemDetailPage() {
   async function onLaunch() {
     if (!user || !token) return;
     setLaunching(true);
+    setLaunchError(null); // Clear previous errors
+    
     try {
+      // First check if there's already an existing session
       const existing = await getOpenSessionStatus(problemId, user.id, token);
       if (existing && existing.session && existing.session.id) {
         setSessionId(existing.session.id);
@@ -231,12 +236,61 @@ export default function ProblemDetailPage() {
         return;
       }
 
+      // Launch new session
       const session = await launchSession(user.id, problemId, token);
       setSessionId(session.id);
       setSessionStatus(session.status);
       startPolling(session.id);
-    } catch {
+      
+    } catch (error: any) {
+      console.error('Launch session error:', error);
       setSessionStatus('Error');
+      
+      // Handle specific backend error messages
+      let errorMessage = 'Failed to launch server';
+      if (error.message) {
+        const msg = error.message.toLowerCase();
+        
+        // Backend specific error messages
+        if (msg.includes('user already has an opened session')) {
+          errorMessage = 'You already have an active session running. Please stop it first or wait for it to complete.';
+        } else if (msg.includes('invalid input data')) {
+          errorMessage = 'Invalid request data. Please try again or contact support.';
+        } else if (msg.includes('failed to create session')) {
+          errorMessage = 'Unable to create session. Database error occurred.';
+        } else if (msg.includes('no available subnets found')) {
+          errorMessage = 'No server capacity available. All servers are currently in use. Please try again later.';
+        } else if (msg.includes('no security group found')) {
+          errorMessage = 'Server configuration error. Please contact support.';
+        } else if (msg.includes('problem not found')) {
+          errorMessage = 'This problem does not exist or has been removed.';
+        } else if (msg.includes('failed to launch container')) {
+          errorMessage = 'Failed to start server container. Infrastructure error occurred.';
+        } else if (msg.includes('failed to get task arn')) {
+          errorMessage = 'Server startup failed. Could not initialize container.';
+        } else if (msg.includes('failed to get network interface') || msg.includes('failed to get public ip')) {
+          errorMessage = 'Server network setup failed. Please try again.';
+        } else if (msg.includes('unauthorized')) {
+          errorMessage = 'You are not authorized to launch servers. Please log in again.';
+        } else if (msg.includes('forbidden')) {
+          errorMessage = 'Access denied. You do not have permission for this action.';
+        } else if (msg.includes('missing authorization header')) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (msg.includes('missing userid or problemid')) {
+          errorMessage = 'Invalid request. Missing required information.';
+        } else {
+          // Show the actual backend error message for other cases
+          errorMessage = error.message;
+        }
+      }
+      
+      setLaunchError(errorMessage);
+      
+      // Auto-clear error after 10 seconds
+      setTimeout(() => {
+        setLaunchError(null);
+      }, 10000);
+      
     } finally {
       setLaunching(false);
     }
@@ -246,13 +300,58 @@ export default function ProblemDetailPage() {
   async function onStop() {
     if (!sessionId || !token) return;
     setLaunching(true);
+    setLaunchError(null); // Clear any previous errors
+    
     try {
       await stopSession(sessionId, token);
       setSessionStatus('Terminated');
       setTerminalOpen(false);
+      setSessionId(null);
+      setIP(null);
       stopPolling();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to stop session:', error);
+      
+      // Handle backend stop session errors
+      let errorMessage = 'Failed to stop server';
+      if (error.message) {
+        const msg = error.message.toLowerCase();
+        
+        if (msg.includes('session not found')) {
+          errorMessage = 'Session not found. It may have already been stopped or expired.';
+          // Clean up local state since session doesn't exist
+          setSessionStatus('Terminated');
+          setTerminalOpen(false);
+          setSessionId(null);
+          setIP(null);
+          stopPolling();
+        } else if (msg.includes('failed to stop container')) {
+          errorMessage = 'Unable to stop the server container. It may have already stopped.';
+        } else if (msg.includes('failed to delete session')) {
+          errorMessage = 'Server stopped but cleanup failed. Session may still appear active.';
+        } else if (msg.includes('unauthorized')) {
+          errorMessage = 'You are not authorized to stop this session. Please log in again.';
+        } else if (msg.includes('forbidden')) {
+          errorMessage = 'Access denied. You can only stop your own sessions.';
+        } else if (msg.includes('user id does not match')) {
+          errorMessage = 'This session belongs to another user. You cannot stop it.';
+        } else if (msg.includes('invalid session id')) {
+          errorMessage = 'Invalid session ID provided.';
+        } else if (msg.includes('missing authorization header')) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else {
+          // Show the actual backend error message
+          errorMessage = error.message;
+        }
+      }
+      
+      setLaunchError(errorMessage);
+      
+      // Auto-clear error after 8 seconds
+      setTimeout(() => {
+        setLaunchError(null);
+      }, 8000);
+      
     } finally {
       setLaunching(false);
     }
@@ -283,7 +382,36 @@ export default function ProblemDetailPage() {
         stopPolling();
       }
     } catch (e: any) {
-      setFlagResult({ correct: false, message: e.message || 'Submission failed' });
+      // Handle backend flag submission errors
+      let errorMessage = 'Submission failed';
+      if (e.message) {
+        const msg = e.message.toLowerCase();
+        
+        if (msg.includes('no active session found')) {
+          errorMessage = 'No active session found. Please launch a server first.';
+        } else if (msg.includes('multiple active sessions found')) {
+          errorMessage = 'Multiple sessions detected. Please contact support.';
+        } else if (msg.includes('session flag not found')) {
+          errorMessage = 'Session configuration error. Please restart the server.';
+        } else if (msg.includes('failed to stop container')) {
+          errorMessage = 'Flag was correct but server cleanup failed. Points may still be awarded.';
+        } else if (msg.includes('failed to delete session')) {
+          errorMessage = 'Flag was correct but session cleanup failed. You may need to refresh the page.';
+        } else if (msg.includes('unauthorized')) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (msg.includes('forbidden')) {
+          errorMessage = 'Access denied. You can only submit flags for your own sessions.';
+        } else if (msg.includes('invalid session id')) {
+          errorMessage = 'Invalid session. Please restart the server.';
+        } else if (msg.includes('missing flag')) {
+          errorMessage = 'Flag cannot be empty. Please enter a valid flag.';
+        } else {
+          // Use the actual backend error message
+          errorMessage = e.message;
+        }
+      }
+      
+      setFlagResult({ correct: false, message: errorMessage });
     } finally {
       setFlagSubmitting(false);
     }
@@ -296,21 +424,27 @@ export default function ProblemDetailPage() {
   ): Promise<{ session: SessionItem; status: SessionStatus; ip: string } | null> {
     if (!token || !problemId || userId === undefined || userId === null) return null;
 
-    const resp = await getSession(token, problemId);
-    if (!resp) return null;
+    try {
+      const resp = await getSession(token, problemId);
+      if (!resp) return null;
 
-    // normalize fields to camelCase (compatible with SessionItem)
-    const session: SessionItem = {
-      id: resp.id,
-      user_id: user.id,
-      problem_id: problemId,
-      status: resp.status,
+      // normalize fields to camelCase (compatible with SessionItem)
+      const session: SessionItem = {
+        id: resp.id,
+        user_id: user.id,
+        problem_id: problemId,
+        status: resp.status,
+      }
+
+      const statusResp = await getSessionStatus(session.id, token);
+      const status = statusResp.status ?? 'Unknown';
+
+      return { session, status, ip: resp.ip_address };
+    } catch (error) {
+      // If there's no session or error fetching, return null
+      console.log('No existing session found:', error);
+      return null;
     }
-
-    const statusResp = await getSessionStatus(session.id, token);
-    const status = statusResp.status ?? 'Unknown';
-
-    return { session, status, ip: resp.ip_address };
   }
 
   return (
@@ -423,6 +557,39 @@ export default function ProblemDetailPage() {
                 </button>
               </div>
             </div>
+
+            {/* Launch Error Display */}
+            {launchError && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400 flex items-start gap-3">
+                <span className="text-red-500 mt-0.5">⚠️</span>
+                <div className="flex-1">
+                  <div className="font-semibold mb-1">Server Launch Failed</div>
+                  <div className="text-sm mb-3">{launchError}</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={onLaunch}
+                      disabled={launching}
+                      className="px-3 py-1.5 text-sm rounded-md bg-red-600 hover:bg-red-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {launching ? 'Retrying...' : 'Try Again'}
+                    </button>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="px-3 py-1.5 text-sm rounded-md border border-red-500/30 hover:bg-red-500/10 text-red-400 transition-all"
+                    >
+                      Refresh Page
+                    </button>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setLaunchError(null)}
+                  className="text-red-400 hover:text-red-300 transition-colors"
+                  title="Dismiss error"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {/* Terminal Section */}
             {terminalOpen && (
