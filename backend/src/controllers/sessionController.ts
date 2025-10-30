@@ -21,14 +21,14 @@ export default class SessionController {
     }
 
 
-    public async get(token: string, sessionId: number): Promise<any> {
+    public async get(token: string, sessionId?: number): Promise<any> {
         try {
 
             const authorized = await this.authorize.call(token);
             if (!authorized) 
                 throw new Error("Unauthorized");
 
-            const result = await this.getSession.call({ Id: sessionId });
+            const result = await this.getSession.call(authorized.id, sessionId);
             if (result.user_id !== authorized.id)
                 throw new Error("Forbidden");
 
@@ -65,7 +65,7 @@ export default class SessionController {
             if (!authorized) 
                 throw new Error("Unauthorized");
 
-            const session = await this.getSession.call({ Id: sessionId });
+            const session = await this.getSession.call(authorized.id, sessionId);
             if (session.user_id !== authorized.id)
                 throw new Error("Forbidden");
 
@@ -87,7 +87,7 @@ export default class SessionController {
             const authorized = await this.authorize.call(token);
             if (!authorized) throw new Error("Unauthorized");
 
-            const session = await this.getSession.call({ Id: sessionId });
+            const session = await this.getSession.call(authorized.id, sessionId);
             if (session.user_id !== authorized.id)
                 throw new Error("Forbidden");
 

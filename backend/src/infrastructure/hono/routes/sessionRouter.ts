@@ -22,11 +22,34 @@ const controller = new SessionController(
     new Authorize(tokenManager)
 )
 
+router.get('/', async (c) => {
+    try {
+
+        const token = c.req.header("Authorization")?.split(" ")[1];
+        if (!token) throw new Error("Missing Authorization header");
+
+        const session = await controller.get(token);
+        return c.json({
+            id: session.id,
+            status: session.status,
+            task_arn: session.task_arn,
+            ip_address: session.ip_address,
+            started_at: session.started_at,
+            ended_at: session.ended_at,
+        });
+        
+    } catch (error) {
+        if (error instanceof Error) {
+            return c.json({ error: error.message }, 400)
+        }
+        return c.json({ error: "Unknown error" }, 500)     
+    }
+});
+
 router.get('/:id', async (c) => {
     try {
 
         const sessionId = parseInt(c.req.param("id"));
-        if (isNaN(sessionId)) throw new Error("Invalid session ID");
 
         const token = c.req.header("Authorization")?.split(" ")[1];
         if (!token) throw new Error("Missing Authorization header");
