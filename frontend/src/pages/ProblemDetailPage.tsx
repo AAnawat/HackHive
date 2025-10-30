@@ -7,6 +7,8 @@ import type { Problem, SessionStatus, SessionItem } from '../types';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+type OneShot = 'like' | 'dislike' | null;
+
 export default function ProblemDetailPage() {
   const params = useParams();
   const navigate = useNavigate();
@@ -18,9 +20,16 @@ export default function ProblemDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Like
+  // Vote
   const [likeLoading, setLikeLoading] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
+  const [voteDone, setVoteDone] = useState<boolean>(false);
+  const [voteChoice, setVoteChoice] = useState<OneShot>(null);
+  const voteLockRef = useRef<boolean>(false);
+  const VOTE_KEY = useMemo(
+    () => (user ? `vote-once:problem:${problemId}:user:${user.id}` : ''),
+    [problemId, user]
+  );
 
   // Hints toggle
   const [showHints, setShowHints] = useState(false);
@@ -52,9 +61,38 @@ export default function ProblemDetailPage() {
   };
   const statusLabel = (status: SessionStatus) => (status === 'Unknown' ? 'Unknown' : status);
 
-  const canUnlike = useMemo(() => Math.max(0, problem?.like ?? 0) > 0, [problem?.like]);
+  useEffect(() => {
+    if (!problem || !user) return;
 
-  // Load problem detail
+    const likedByMe = (problem as any)?.likedByMe;
+    const dislikedByMe = (problem as any)?.dislikedByMe;
+
+    if (typeof likedByMe === 'boolean' || typeof dislikedByMe === 'boolean') {
+      if (likedByMe) {
+        setVoteDone(true);
+        setVoteChoice('like');
+        if (VOTE_KEY) localStorage.setItem(VOTE_KEY, 'L');
+      } else if (dislikedByMe) {
+        setVoteDone(true);
+        setVoteChoice('dislike');
+        if (VOTE_KEY) localStorage.setItem(VOTE_KEY, 'D');
+      } else {
+        setVoteDone(false);
+        setVoteChoice(null);
+        if (VOTE_KEY) localStorage.removeItem(VOTE_KEY);
+      }
+      return;
+    }
+
+    if (VOTE_KEY) {
+      const stored = localStorage.getItem(VOTE_KEY);
+      if (stored === 'L') { setVoteDone(true); setVoteChoice('like'); }
+      else if (stored === 'D') { setVoteDone(true); setVoteChoice('dislike'); }
+      else { setVoteDone(false); setVoteChoice(null); }
+    }
+  }, [problem, user, VOTE_KEY]);
+
+  // โหลดรายละเอียดโจทย์
   useEffect(() => {
     if (!problemId || Number.isNaN(problemId)) {
       setError('Invalid problem id');
@@ -86,7 +124,7 @@ export default function ProblemDetailPage() {
     };
   }, [problemId]);
 
-  // Find an open session (Running/Pending) for this problem+user and start polling
+  // หา session ที่ยังเปิดอยู่ แล้วเริ่ม polling
   useEffect(() => {
     if (!user || !token || !problemId) return;
     let cancelled = false;
@@ -129,9 +167,9 @@ export default function ProblemDetailPage() {
 
   // Polling helpers
   function startPolling(sid: string) {
-    stopPolling(); // Only one poll at a time
+    stopPolling();
     pollTimerRef.current = window.setInterval(() => pollOnce(sid), 5000);
-    void pollOnce(sid); // one immediate
+    void pollOnce(sid);
   }
 
   function stopPolling() {
@@ -210,22 +248,37 @@ export default function ProblemDetailPage() {
     }
   }
 
-  async function handleLike(isLiked: boolean) {
+  async function handleOneShotVote(choice: 'like' | 'dislike') {
     if (!token) {
       setLikeError('You must be logged in to vote');
       return;
     }
+    if (voteDone || voteLockRef.current) return;
+
+    voteLockRef.current = true;
     setLikeLoading(true);
     setLikeError(null);
+
+    const delta = choice === 'like' ? +1 : -1;
+
+    setVoteChoice(choice);
+    setVoteDone(true);
+    setProblem(prev => prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) + delta) } : prev);
+    window.dispatchEvent(new CustomEvent('problem:voted', { detail: { problemId: problemId, delta } }));
+    if (VOTE_KEY) localStorage.setItem(VOTE_KEY, choice === 'like' ? 'L' : 'D');
+
     try {
-      await voteProblem(problemId, isLiked, token);
-      setProblem((prev) =>
-        prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) + (isLiked ? 1 : -1)) } : prev
-      );
+      await voteProblem(problemId, choice === 'like', token);
     } catch (e: any) {
-      setLikeError(e.message || 'Failed to vote');
+      setLikeError(e?.message || 'Failed to vote');
+      setVoteChoice(null);
+      setVoteDone(false);
+      setProblem(prev => prev ? { ...prev, like: Math.max(0, (prev.like ?? 0) - delta) } : prev);
+      window.dispatchEvent(new CustomEvent('problem:voted', { detail: { problemId: problemId, delta: -delta } }));
+      if (VOTE_KEY) localStorage.removeItem(VOTE_KEY);
     } finally {
       setLikeLoading(false);
+      voteLockRef.current = false;
     }
   }
 
@@ -253,7 +306,6 @@ export default function ProblemDetailPage() {
     }
   }
 
-  // ---- helper: find open session for this problem+user and get its live status
   async function getOpenSessionStatus(
     problemId: number,
     userId: string | number,
@@ -506,27 +558,49 @@ export default function ProblemDetailPage() {
                   </form>
                 </div>
 
-                {/* Like/Unlike */}
+                {/* Like / Dislike (one-shot, no undo) */}
                 <div className="bg-neutral-900 rounded-lg p-6 border border-neutral-800">
                   <h3 className="font-semibold mb-4">Feedback</h3>
                   <div className="flex items-center gap-3">
                     <button
-                      disabled={likeLoading}
-                      onClick={() => handleLike(true)}
-                      className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 disabled:opacity-50 transition-all"
+                      disabled={likeLoading || voteDone}
+                      onClick={() => handleOneShotVote('like')}
+                      className={`px-4 py-2 rounded-lg border transition-all inline-flex items-center gap-2
+                        ${
+                          voteDone && voteChoice === 'like'
+                            ? 'bg-green-600/20 border-green-600/40 text-green-300 cursor-not-allowed'
+                            : voteDone
+                              ? 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed'
+                              : likeLoading
+                                ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
+                                : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                        }`}
+                      title={voteDone ? 'You already voted' : 'Like this problem'}
                     >
                       👍 Like
                     </button>
+
                     <button
-                      disabled={likeLoading || !canUnlike}
-                      onClick={() => handleLike(false)}
-                      className="px-4 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 disabled:opacity-50 transition-all"
-                      title={canUnlike ? '' : 'Cannot unlike below 0'}
+                      disabled={likeLoading || voteDone}
+                      onClick={() => handleOneShotVote('dislike')}
+                      className={`px-4 py-2 rounded-lg border transition-all inline-flex items-center gap-2
+                        ${
+                          voteDone && voteChoice === 'dislike'
+                            ? 'bg-red-600/20 border-red-600/40 text-red-300 cursor-not-allowed'
+                            : voteDone
+                              ? 'bg-neutral-800 border-neutral-700 text-neutral-500 cursor-not-allowed'
+                              : likeLoading
+                                ? 'bg-neutral-800 border-neutral-700 text-neutral-400 cursor-wait'
+                                : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                        }`}
+                      title={voteDone ? 'You already voted' : 'Dislike this problem'}
                     >
-                      👎 Unlike
+                      👎 Dislike
                     </button>
+
                     {likeError && <span className="text-sm text-red-400">{likeError}</span>}
                   </div>
+                  <p className="mt-3 text-sm text-neutral-400">โหวตได้เพียงครั้งเดียวต่อผู้ใช้/โจทย์</p>
                 </div>
               </div>
             </div>

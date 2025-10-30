@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Problem } from '../types';
-import { forwardRef } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 
 type Props = {
   problem: Problem;
@@ -10,13 +10,32 @@ type Props = {
 const ProblemCard = forwardRef<HTMLAnchorElement, Props>(({ problem, isNew }, ref) => {
   const title = problem.problem || '(untitled)';
   const desc = problem.description || '';
-  const likes = typeof (problem as any).like === 'number' ? (problem as any).like : 0;
+
+  const initialLikes = typeof (problem as any).likes === 'number' ? (problem as any).likes : 0;
+
   const score = typeof problem.score === 'number' ? problem.score : 0;
   const difficulty = problem.difficulty || 'Unknown';
 
-  // รองรับทั้ง `categories: string[]` และ `category: string`
+  const [likeCount, setLikeCount] = useState<number>(initialLikes);
+
+  useEffect(() => {
+    setLikeCount(initialLikes);
+  }, [initialLikes, problem.id]);
+
+  useEffect(() => {
+    function onVoted(e: Event) {
+      const ce = e as CustomEvent<{ problemId: number; delta: number }>;
+      if (!ce.detail) return;
+      if (Number(ce.detail.problemId) === Number(problem.id)) {
+        setLikeCount((prev) => Math.max(0, prev + (ce.detail.delta || 0)));
+      }
+    }
+    window.addEventListener('problem:voted', onVoted);
+    return () => window.removeEventListener('problem:voted', onVoted);
+  }, [problem.id]);
+
   const categories: string[] = Array.isArray((problem as any).categories)
-    ? (problem as any).categories as string[]
+    ? ((problem as any).categories as string[])
     : ((problem as any).category ? [String((problem as any).category)] : []);
 
   // สีระดับความยาก
@@ -46,7 +65,7 @@ const ProblemCard = forwardRef<HTMLAnchorElement, Props>(({ problem, isNew }, re
 
       <p className="text-neutral-300 mt-2 line-clamp-3">{desc}</p>
 
-      {/* หมวดหมู่โจทย์ (สีเหลืองทั้งหมด) */}
+      {/* หมวดหมู่โจทย์ */}
       {categories.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {categories.map((c) => (
@@ -67,7 +86,7 @@ const ProblemCard = forwardRef<HTMLAnchorElement, Props>(({ problem, isNew }, re
           🍯 Score: <span className="text-yellow-400">{score}</span>
         </span>
         <span>
-          🐝 Likes: <span className="text-green-400">{likes}</span> %
+          🐝 Likes: <span className="text-green-400">{likeCount} %</span>
         </span>
       </div>
     </Link>
