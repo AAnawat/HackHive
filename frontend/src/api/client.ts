@@ -75,7 +75,7 @@ export async function getSession(token?: string, problemId?: number): Promise<Se
       throw new Error('Failed to fetch session');
     }
 
-    if (res.problem_id !== problemId) {
+        if (res.problem_id !== problemId) {
       throw new Error('No open session for this problem');
     }
 

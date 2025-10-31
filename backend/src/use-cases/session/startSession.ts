@@ -24,7 +24,7 @@ export default class StartSession {
 
     public async call(input: { userId: number, problemId: number }): Promise<Session> {
         // Check if user already has an opened session
-        const openedSessions = await this.sessionDAO.get({ userId: input.userId, status: "Running" });
+        const openedSessions = await this.sessionDAO.get({ userId: input.userId });
         if (openedSessions.length >= 1) 
             throw new Error("User already has an opened session");
 
