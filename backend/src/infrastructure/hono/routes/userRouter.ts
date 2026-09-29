@@ -13,18 +13,17 @@ import GetUser from "../../../use-cases/user/get";
 import DeleteUser from "../../../use-cases/user/delete";
 import UserPasswordCheck from "../../../use-cases/auth/userPasswordCheck";
 import GetLeaderboard from "../../../use-cases/user/leaderboard";
-import PictureManager from "../../utils/pictureManager";
-import s3Client from "../../aws/s3";
+import providers from "../../../config/providers";
 
 
 const router = new Hono({ strict: false })
 const controller = new UserController(
     new ListUsers(serviceDAO.user),
     new CreateUser(serviceDAO.user, createUserValidator, encryptor),
-    new UpdateUser(serviceDAO.user, updateUserValidator, encryptor, new PictureManager(s3Client)),
+    new UpdateUser(serviceDAO.user, updateUserValidator, encryptor, providers.pictureManager),
     new Authorize(tokenManager),
     new GetUser(serviceDAO.user),
-    new DeleteUser(serviceDAO.user, new PictureManager(s3Client)),
+    new DeleteUser(serviceDAO.user, providers.pictureManager),
     new UserPasswordCheck(encryptor, serviceDAO.user)
 )
 

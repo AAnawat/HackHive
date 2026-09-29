@@ -19,12 +19,12 @@ export default class CloudQuery implements ICloudQuery {
         const command = new DescribeSubnetsCommand({ Filters: filter });
         const response = await this.EC2Client.send(command);
         
-        response.Subnets.filter(subnet => subnet.AvailableIpAddressCount > 0);
-        
-        if (!response.Subnets || response.Subnets.length === 0) 
+        const subnets = (response.Subnets ?? []).filter(subnet => subnet.AvailableIpAddressCount > 0);
+
+        if (subnets.length === 0)
             throw new Error("No available subnets found");
-        
-        return response.Subnets.map(subnet => subnet.SubnetId);
+
+        return subnets.map(subnet => subnet.SubnetId);
     }
     
     public async findSecurityGroup(filter: {Name: string, Values: string[]}[]): Promise<string> {

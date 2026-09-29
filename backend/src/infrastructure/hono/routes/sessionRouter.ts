@@ -4,21 +4,18 @@ import serviceDAO from "../../../config/serviceDAO";
 import StartSession from "../../../use-cases/session/startSession";
 import Authorize from "../../../use-cases/auth/authorize";
 import tokenManager from "../../utils/tokenManager";
-import ContainerManager from "../../utils/containerManager";
-import ecsClient from "../../aws/ecs";
-import ec2Client from "../../aws/ec2";
 import startSessionValidator from "../../validator/session/startSession";
-import CloudQuery from "../../utils/cloudQuery";
+import providers from "../../../config/providers";
 import GetSession from "../../../use-cases/session/getSession";
 import StopSession from "../../../use-cases/session/stopSession";
 import SubmitFlag from "../../../use-cases/session/submitFlag";
 
 const router = new Hono({ strict: false });
 const controller = new SessionController(
-    new StartSession(serviceDAO.session, serviceDAO.problem, new ContainerManager(ecsClient), new CloudQuery(ec2Client), startSessionValidator),
+    new StartSession(serviceDAO.session, serviceDAO.problem, providers.containerManager, startSessionValidator),
     new GetSession(serviceDAO.session),
-    new StopSession(serviceDAO.session, new ContainerManager(ecsClient)),
-    new SubmitFlag(serviceDAO.session, serviceDAO.solve, new ContainerManager(ecsClient)),
+    new StopSession(serviceDAO.session, providers.containerManager),
+    new SubmitFlag(serviceDAO.session, serviceDAO.solve, providers.containerManager),
     new Authorize(tokenManager)
 )
 

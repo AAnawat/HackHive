@@ -1,26 +1,35 @@
 import type IContainerManager from "../../interfaces/containerManager";
+import type ICloudQuery from "../../interfaces/cloudQuery";
 import ecsConfig from "../../config/ecsConfig";
-import { 
+import {
     DescribeTasksCommand,
     LaunchType,
     RunTaskCommand,
     StopTaskCommand,
     waitUntilTasksRunning,
     type ECSClient,
-    type RunTaskCommandOutput,
-    type StopTaskCommandOutput 
 } from "@aws-sdk/client-ecs";
-import type { WaiterResult } from "@smithy/util-waiter";
 
 export default class ContainerManager implements IContainerManager {
     private ecsClient: ECSClient;
+    private cloudQuery: ICloudQuery;
 
-    constructor(ecsClient: ECSClient) {
+    constructor(ecsClient: ECSClient, cloudQuery: ICloudQuery) {
         this.ecsClient = ecsClient;
+        this.cloudQuery = cloudQuery;
     }
 
 
-    public async createContainer(taskDefinition: string, subnet: string, securityGroups: string, override: any): Promise<RunTaskCommandOutput> {
+    public async createContainer(taskDefinition: string, environment: Record<string, string>): Promise<string> {
+        const availableSubnets = await this.cloudQuery.findAvailableSubnet([
+            { Name: "tag:role", Values: ["problem-subnet"] },
+        ])
+        const selectedSubnet = availableSubnets[Math.floor(Math.random() * availableSubnets.length)];
+
+        const securityGroup = await this.cloudQuery.findSecurityGroup([
+            { Name: "tag:role", Values: ["problem-sg"] },
+        ]);
+
         const command = new RunTaskCommand({
             cluster: ecsConfig.cluster,
             taskDefinition: taskDefinition,
@@ -33,42 +42,63 @@ export default class ContainerManager implements IContainerManager {
             ],
             networkConfiguration: {
                 awsvpcConfiguration: {
-                    subnets: [ subnet ],
+                    subnets: [ selectedSubnet ],
                     assignPublicIp: "ENABLED",
-                    securityGroups: [ securityGroups ]
+                    securityGroups: [ securityGroup ]
                 }
             },
-            overrides: override
+            overrides: {
+                containerOverrides: [
+                    {
+                        name: taskDefinition.split(":")[0],
+                        environment: Object.entries(environment).map(([name, value]) => ({ name, value }))
+                    }
+                ]
+            }
         })
 
-        return await this.ecsClient.send(command)
+        const response = await this.ecsClient.send(command)
+        const taskArn = response.tasks?.[0]?.taskArn;
+        if (!taskArn)
+            throw new Error("Failed to launch container");
+
+        return taskArn
     }
-    
-    public async waitContainer(taskArn: string): Promise<WaiterResult> {
-        const result = await waitUntilTasksRunning(
+
+    public async waitContainer(taskArn: string): Promise<void> {
+        await waitUntilTasksRunning(
             { client: this.ecsClient, maxWaitTime: 300 },
             { cluster: ecsConfig.cluster, tasks: [taskArn] }
         )
-        return result
     }
 
-    public async describeContainer(taskArn: string): Promise<RunTaskCommandOutput> {
+    public async getContainerAddress(taskArn: string): Promise<string> {
         const command = new DescribeTasksCommand({
             cluster: ecsConfig.cluster,
             tasks: [ taskArn ]
         })
+        const containerDesc = await this.ecsClient.send(command)
+        if (!containerDesc.tasks || containerDesc.tasks.length === 0)
+            throw new Error("Failed to describe container");
 
-        return await this.ecsClient.send(command)
+        const containerInterface = await this.cloudQuery.findNetworkInterface(
+            containerDesc.tasks[0].attachments?.[0].details?.find(detail => detail.name === "networkInterfaceId")?.value || ""
+        )
+
+        const publicIp = containerInterface.Association?.PublicIp;
+        if (!publicIp)
+            throw new Error("Failed to get public IP");
+
+        return publicIp
     }
-    
-    public async deleteContainer(task: string, reason: string): Promise<StopTaskCommandOutput> {
+
+    public async deleteContainer(task: string, reason: string): Promise<void> {
         const command = new StopTaskCommand({
             cluster: ecsConfig.cluster,
             task: task,
             reason: reason
         })
 
-        return await this.ecsClient.send(command)
-        
+        await this.ecsClient.send(command)
     }
 }

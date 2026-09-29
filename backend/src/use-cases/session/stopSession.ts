@@ -17,9 +17,9 @@ export default class StopSession {
             if (session.length === 0) 
                 throw new Error("Session not found");
     
-            const stopContainer = await this.containerManager.deleteContainer(session[0].task_arn, reason);
-            if (!stopContainer) 
-                throw new Error("Failed to stop container");
+            // A session that failed to launch has no container to stop
+            if (session[0].task_arn)
+                await this.containerManager.deleteContainer(session[0].task_arn, reason);
     
             const deleteResult = await this.sessionDAO.delete(sessionId);
             if (!deleteResult) 

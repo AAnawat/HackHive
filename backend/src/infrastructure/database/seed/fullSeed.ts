@@ -1,6 +1,7 @@
 import * as schema from '../schema';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import 'dotenv/config';
+import pictureManagerConfig from '../../../config/pictureManagerConfig';
 
 
 const dbConnection = drizzle(process.env.DATABASE_URL!, { schema });
@@ -14,26 +15,31 @@ async function main() {
         username: 'Anawat',
         gmail: 'anawat@example.com',
         password: '$2b$10$hashedpassword1',
+        pfp_path: pictureManagerConfig.defaultPath,
       },
       {
         username: 'Insi',
         gmail: 'insi@example.com',
         password: '$2b$10$hashedpassword2',
+        pfp_path: pictureManagerConfig.defaultPath,
       },
       {
         username: 'Best',
         gmail: 'best@example.com',
         password: '$2b$10$hashedpassword3',
+        pfp_path: pictureManagerConfig.defaultPath,
       },
       {
         username: 'Sukhum',
         gmail: 'sukhum@example.com',
         password: '$2b$10$hashedpassword4',
+        pfp_path: pictureManagerConfig.defaultPath,
       },
       {
         username: 'Petch',
         gmail: 'petch@example.com',
         password: '$2b$10$hashedpassword5',
+        pfp_path: pictureManagerConfig.defaultPath,
       }
     ]);
 
