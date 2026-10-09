@@ -8,7 +8,8 @@ ARG SCRIPT=getting-start.sh
 
 COPY ./scripts/${SCRIPT} ./
 
-RUN chmod +x ${SCRIPT}
+# Strip CRLF line endings from Windows checkouts
+RUN sed -i 's/\r$//' ${SCRIPT} && chmod +x ${SCRIPT}
 
 ENV SCRIPT=${SCRIPT}
 

@@ -23,16 +23,26 @@ services:
     volumes:
       - /app/node_modules
       - ./backend:/app
+      # Lets the backend launch problem containers when CLOUD_PROVIDER=local
+      - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - ./backend/.env
     environment:
       - CHOKIDAR_USEPOLLING=true
       - NODE_ENV=development
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
-    depends_on: 
+      - CLOUD_PROVIDER=${CLOUD_PROVIDER:-local}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@database:5432/${DB_NAME}
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASSWORD}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+    depends_on:
       - database
+      - problem
     networks:
       - hackhive-network
   database:
@@ -52,6 +62,8 @@ services:
     build:
       context: ./problems/
       dockerfile: dockerfile
+    # Local problem image for task_definition "getting-start:1"
+    image: hackhive-problem-getting-start
     container_name: hackhive-problem
     ports:
       - "1234:1234"
@@ -63,12 +75,19 @@ services:
       dockerfile: dockerfile
     container_name: hackhive-scheduler
     env_file:
-      - ./scheduler/.env
+      - path: ./scheduler/.env
+        required: false
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - NODE_ENV=development
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - CLOUD_PROVIDER=${CLOUD_PROVIDER:-local}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@database:5432/${DB_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+    depends_on:
+      - database
     networks:
       - hackhive-network
 

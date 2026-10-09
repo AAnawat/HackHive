@@ -608,7 +608,8 @@ export default function ProblemDetailPage() {
                   </button>
                 </div>
                 <div style={{ height: '400px' }}>
-                  <Xterm host={`http://${ip}:1234`} />
+                  {/* ECS gives a bare public IP; local Docker gives host:port */}
+                  <Xterm host={`http://${ip?.includes(':') ? ip : `${ip}:1234`}`} />
                 </div>
               </div>
             )}

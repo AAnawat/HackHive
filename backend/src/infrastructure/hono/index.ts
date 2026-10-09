@@ -1,4 +1,6 @@
 import { serve } from '@hono/node-server'
+import { serveStatic } from '@hono/node-server/serve-static'
+import provider from '../../config/cloudProvider'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
@@ -26,6 +28,14 @@ app.use(
 app.get("/health", (c) => {
   return c.json({message: "Still Running."})
 })
+
+// Profile pictures stored on disk when CLOUD_PROVIDER=local
+if (provider === "local") {
+  app.use("/uploads/*", serveStatic({
+    root: "./",
+    rewriteRequestPath: (path) => path.replace(/^\/api/, ""),
+  }))
+}
 
 app.route("/users", userRouter)
 app.route("/auth", authRouter)

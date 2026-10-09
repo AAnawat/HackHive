@@ -5,6 +5,7 @@ import type IUserDAO from "../../../interfaces/DAO/userDAO";
 import type { LeaderboardEntry } from "../../../interfaces/DAO/userDAO";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { usersTable, solvedRecordsTable } from "../schema";
+import pictureManagerConfig from "../../../config/pictureManagerConfig";
 
 export default class UserDAO implements IUserDAO {
     connection!: NodePgDatabase<typeof schema>;
@@ -74,7 +75,8 @@ export default class UserDAO implements IUserDAO {
         const insertingValue: any = {
             username: payload.username,
             gmail: payload.gmail,
-            password: password
+            password: password,
+            pfp_path: pictureManagerConfig.defaultPath
         }
 
         const createResult = await this.connection

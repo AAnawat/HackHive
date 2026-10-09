@@ -40,8 +40,7 @@ export default class SubmitFlag {
             // Record the solve
             if (!existingSolve) 
                 var score = await this.solveDAO.solvedProblem(session[0].user_id, session[0].problem_id);
-            const stopContainer = await this.containerManager.deleteContainer(session[0].task_arn, "Flag submitted correctly");
-            if (!stopContainer) throw new Error("Failed to stop container");
+            await this.containerManager.deleteContainer(session[0].task_arn, "Flag submitted correctly");
 
             const deleteResult = await this.sessionDAO.delete(sessionId);
             if (!deleteResult) throw new Error("Failed to delete session");

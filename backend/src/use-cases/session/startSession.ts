@@ -1,7 +1,6 @@
 import type Session from "../../entities/session";
 import type IContainerManager from "../../interfaces/containerManager";
 import type ISessionDAO from "../../interfaces/DAO/sessionDAO";
-import type ICloudQuery from "../../interfaces/cloudQuery";
 import type { IValidator } from "../../interfaces/validator";
 import type IProblemDAO from "../../interfaces/DAO/problemDAO";
 
@@ -11,13 +10,11 @@ export default class StartSession {
     private problemDAO: IProblemDAO;
     private containerManager: IContainerManager;
     private validator: IValidator;
-    private cloudQuery: ICloudQuery
 
-    constructor(sessionDAO: ISessionDAO, problemDAO: IProblemDAO, containerManager: IContainerManager, awsQuery: ICloudQuery, validator: IValidator) {
+    constructor(sessionDAO: ISessionDAO, problemDAO: IProblemDAO, containerManager: IContainerManager, validator: IValidator) {
         this.sessionDAO = sessionDAO;
         this.problemDAO = problemDAO;
         this.containerManager = containerManager;
-        this.cloudQuery = awsQuery;
         this.validator = validator;
     }
 
@@ -46,67 +43,21 @@ export default class StartSession {
 
 
 
-        // Get relate data for launching container
-        const availableSubnets = await this.cloudQuery.findAvailableSubnet([
-            { Name: "tag:role", Values: ["problem-subnet"] },
-        ])
-        if (availableSubnets.length === 0) 
-            throw new Error("No available subnets found");
-        const selectedSubnet = availableSubnets[Math.floor(Math.random() * availableSubnets.length)];
-
-        const securityGroup = await this.cloudQuery.findSecurityGroup([
-            { Name: "tag:role", Values: ["problem-sg"] },
-        ]);
-        if (!securityGroup)
-            throw new Error("No security group found");
-
         const problem = await this.problemDAO.findOne(input.problemId);
         if (!problem)
             throw new Error("Problem not found");
-
-        const override = {
-            containerOverrides: [
-                {
-                    name: problem.task_definition.split(":")[0],
-                    environment: [
-                        { name: "FLAG", value: createdSession.flag }
-                    ]
-                }
-            ]
-        }
 
 
         // Launch container
         const launchResponse = this.containerManager.createContainer(
             problem.task_definition,
-            selectedSubnet,
-            securityGroup,
-            override
+            { FLAG: createdSession.flag }
         )
-        launchResponse.then(async (response) => {
-            if (!response.tasks || response.tasks.length === 0)
-                throw new Error("Failed to launch container");
+        launchResponse.then(async (containerId) => {
+            await this.containerManager.waitContainer(containerId);
+            const address = await this.containerManager.getContainerAddress(containerId);
 
-            const taskArn = response.tasks[0].taskArn;
-            if (!taskArn)
-                throw new Error("Failed to get task ARN");
-
-            await this.containerManager.waitContainer(taskArn);
-            const containerDesc = await this.containerManager.describeContainer(taskArn);
-            if (!containerDesc.tasks || containerDesc.tasks.length === 0)
-                throw new Error("Failed to describe container");
-
-            const containerInterface = await this.cloudQuery.findNetworkInterface(
-                containerDesc.tasks[0].attachments?.[0].details?.find(detail => detail.name === "networkInterfaceId")?.value || ""
-            )
-            if (!containerInterface)
-                throw new Error("Failed to get network interface");
-
-            const publicIp = containerInterface.Association?.PublicIp;
-            if (!publicIp)
-                throw new Error("Failed to get public IP");
-
-            const updateResult = await this.updateSession(createdSession.id, taskArn, publicIp);
+            const updateResult = await this.updateSession(createdSession.id, containerId, address);
             if (!updateResult)
                 throw new Error("Failed to update session");
 
